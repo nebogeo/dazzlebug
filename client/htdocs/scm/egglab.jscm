@@ -939,7 +939,7 @@
   (let ((egg (car (egglab-data-eggs (game-data c)))))
     (let ((pos (individual-pos egg)))
       (animated-button
-       "" (car pos) (cadr pos) 5 4 #f
+       "" (car pos) (cadr pos) 50 40 #f
        (individual-drawable egg)
        (lambda (c)
          (submit-egg egg c)

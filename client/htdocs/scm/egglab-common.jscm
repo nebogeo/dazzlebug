@@ -214,14 +214,15 @@
     (set! tcanvas.width 128)
     (set! tcanvas.height 128)
     (let ((tctx (tcanvas.getContext "2d")))
-      (when rotate
+      (when #f
             (tctx.translate 64 64)
             (tctx.rotate (* (rndf) 2 Math.PI))
             (tctx.translate -64 -64))
       (draw-egg tctx program c)
+      (set! tctx.globalCompositeOperation "destination-atop")
+      (tctx.drawImage (find-image "egg.png") 0 0)
       tcanvas)))
 
-;;(tctx.drawImage (find-image "egg.png") 0 0)
 
 (define (draw-terminal ctx program c)
   (cond

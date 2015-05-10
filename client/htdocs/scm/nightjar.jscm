@@ -391,6 +391,25 @@
   (button-text-render! b t)
   (ctx.restore))
 
+(define (animated-button-render! ctx t b)
+  (ctx.save)
+
+  (ctx.translate (button-x b) (button-y b))
+
+  (ctx.translate 64 64)
+  (ctx.rotate (Math.atan2 (animated-button-dy b)
+                          (animated-button-dx b)))
+  (ctx.translate -64 -64)
+
+  (button-do-jittering b t)
+
+  (ctx.drawImage
+   (button-drawable b)
+   0 0)
+  (button-text-render! b t)
+  (ctx.restore))
+
+
 (define (circle-button-render! ctx t b)
   (ctx.beginPath)
   (ctx.arc (button-x b) (button-y b)
@@ -404,7 +423,7 @@
    ((eq? (button-type b) "rect-button")
     (rect-button-render! ctx t b))
    ((eq? (button-type b) "animated-button")
-    (image-button-render! ctx t b))
+    (animated-button-render! ctx t b))
    ((eq? (button-type b) "image-button")
     (image-button-render! ctx t b))
    (else
@@ -467,7 +486,7 @@
 (define (make-new-game)
   (list 0 (lambda (ctx) 0) (lambda (t c) c)
         () 0 0 () (list 0 0) (lambda (e c) c)
-        (lambda (c) c) (lambda (ctx) 0) 1))
+        (lambda (c) c) (lambda (ctx) 0) 1 0))
 
 (define (game-time g) (list-ref g 0))
 (define (game-modify-time v g) (list-replace g 0 v))
@@ -493,6 +512,9 @@
 (define (game-modify-postrender v g) (list-replace g 10 v))
 (define (game-mute g) (list-ref g 11))
 (define (game-modify-mute g v) (list-replace g 11 v))
+(define (game-delta g) (list-ref g 12))
+(define (game-modify-delta g v) (list-replace g 12 v))
+
 (define (game-flip-mute g) (game-modify-mute g (if (zero? (game-mute g)) 1 0)))
 
 (define (game-modify-mouse g x y)
@@ -524,17 +546,25 @@
 (define (button-bounce b)
   (cond
    ((< (button-x b) 0)
-    (animated-button-modify-dx
-     b (- 0 (animated-button-dx b))))
+    (button-modify-x
+     (animated-button-modify-dx
+      b (- 0 (animated-button-dx b)))
+     0))
    ((< (button-y b) 0)
-    (animated-button-modify-dy
-     b (- 0 (animated-button-dy b))))
-   ((> (button-x b) screen-width)
-    (animated-button-modify-dx
-     b (- 0 (animated-button-dx b))))
-   ((> (button-y b) screen-height)
-    (animated-button-modify-dy
-     b (- 0 (animated-button-dy b))))
+    (button-modify-y
+     (animated-button-modify-dy
+      b (- 0 (animated-button-dy b)))
+     0))
+    ((> (+ (button-x b) (button-w b)) screen-width)
+     (button-modify-x
+      (animated-button-modify-dx
+       b (- 0 (animated-button-dx b)))
+      (- screen-width (button-w b))))
+   ((> (+ (button-y b) (button-w b)) screen-height)
+    (button-modify-y
+     (animated-button-modify-dy
+      b (- 0 (animated-button-dy b)))
+     (- screen-height (button-h b))))
    (else b)))
 
 (define (game-animate-buttons game)
@@ -546,8 +576,10 @@
           (button-bounce
            (button-modify-y
             (button-modify-x
-             b (+ (button-x b) (animated-button-dx b)))
-            (+ (button-y b) (animated-button-dy b))))
+             b (+ (button-x b)
+                  (* (animated-button-dx b) (game-delta game))))
+            (+ (button-y b)
+               (* (animated-button-dy b) (game-delta game)))))
           b))
     (game-buttons game))))
 
@@ -556,7 +588,8 @@
     (set! game
           (game-animate-buttons
            (game-modify-time
-            t (fn t game))))))
+            t (game-modify-delta
+               (fn t game) (/ (- t (game-time game)) 1000.0)))))))
 
 (define (top-render-game ctx game)
   (let ((fn (game-render game)))
