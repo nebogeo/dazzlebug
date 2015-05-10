@@ -21,7 +21,7 @@
 (define num-eggs-from-population 20)
 (define num-best-eggs 16)
 (define selection-pop-size 256)
-(define photo-time-allowed 10)
+(define photo-time-allowed 600)
 
 (define (make-individual id fitness ancestral-fitness generation parent drawable egg pos phase)
   (list id fitness ancestral-fitness generation parent drawable egg pos phase))
@@ -939,7 +939,7 @@
   (let ((egg (car (egglab-data-eggs (game-data c)))))
     (let ((pos (individual-pos egg)))
       (animated-button
-       "" (car pos) (cadr pos) 1 0 #f
+       "" (car pos) (cadr pos) 5 4 #f
        (individual-drawable egg)
        (lambda (c)
          (submit-egg egg c)
