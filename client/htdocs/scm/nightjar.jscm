@@ -365,7 +365,7 @@
        ((eq? (button-type b) "image-button")
         (rect-button-update! b mx my c))
        ((eq? (button-type b) "animated-button")
-        (image-button-update! b mx my c))
+        (rect-button-update! b mx my c))
        (else
         (circle-button-update! b mx my c)))))
 
@@ -533,8 +533,8 @@
     (animated-button-modify-dx
      b (- 0 (animated-button-dx b))))
    ((> (button-y b) screen-height)
-    (animated-button-modify-dx
-     b (- 0 (animated-button-dx b))))
+    (animated-button-modify-dy
+     b (- 0 (animated-button-dy b))))
    (else b)))
 
 (define (game-animate-buttons game)
