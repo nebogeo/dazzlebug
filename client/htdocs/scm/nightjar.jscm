@@ -195,6 +195,23 @@
         (rndf)
         #f))
 
+(define (animated-button name x y dx dy jitter drawable callback)
+  (list "animated-button"
+        name
+        (- x (/ drawable.width 2))
+        (- y (/ drawable.height 2))
+        drawable.width
+        drawable.height
+        jitter callback drawable
+        (rndf)
+        #f
+        dx dy))
+
+(define (animated-button-dx b) (list-ref b 11))
+(define (animated-button-dy b) (list-ref b 12))
+(define (button-modify-x b v) (list-replace b 2 v))
+(define (button-modify-y b v) (list-replace b 3 v))
+
 (define (circle-button name x y r callback)
   (list "circle-button" name x y r r #f callback #f (rndf) #f))
 
@@ -243,7 +260,7 @@
 
 (define (button-text-jumpy-render! b t)
   (set! ctx.font "normal 30pt 'Press Start 2P'")
-  (set! ctx.fillStyle "#fff")
+  (set! ctx.fillStyle "#000")
   (let ((m (ctx.measureText (button-name b)))
         (cm (ctx.measureText "w"))
         (pos 0)
@@ -347,6 +364,8 @@
         (rect-button-update! b mx my c))
        ((eq? (button-type b) "image-button")
         (rect-button-update! b mx my c))
+       ((eq? (button-type b) "animated-button")
+        (image-button-update! b mx my c))
        (else
         (circle-button-update! b mx my c)))))
 
@@ -355,7 +374,7 @@
         (ctx.save)
         (ctx.translate (button-x b) (button-y b))
         (button-do-jittering b t)
-        (set! ctx.strokeStyle "#fff")
+        (set! ctx.strokeStyle "#000")
         (ctx.strokeRect
          0 0 (button-w b) (button-h b))
         (ctx.fillText (button-name b) (/ (button-w b) 2) (+ 20 (/ (button-h b) 2)))
@@ -377,13 +396,15 @@
   (ctx.arc (button-x b) (button-y b)
            (button-r b) 0 (* Math.PI 2) true)
   (ctx.closePath)
-  (set! ctx.strokeStyle "#fff")
+  (set! ctx.strokeStyle "#000")
   (ctx.stroke))
 
 (define (button-render! ctx t b)
   (cond
    ((eq? (button-type b) "rect-button")
     (rect-button-render! ctx t b))
+   ((eq? (button-type b) "animated-button")
+    (image-button-render! ctx t b))
    ((eq? (button-type b) "image-button")
     (image-button-render! ctx t b))
    (else
@@ -717,10 +738,25 @@
 
 ;; ----------------------------------------
 
+(define (game-animate-buttons game)
+  (game-modify-buttons
+   game
+   (map
+    (lambda (b)
+      (if (eq? (button-type b) "animated-button")
+          (button-modify-y
+           (button-modify-x
+            b (+ (button-x b) (animated-button-dx b)))
+           (+ (button-y b) (animated-button-dy b)))
+          b))
+    (game-buttons game))))
+
 (define (top-update-game t game)
   (let ((fn (game-update game)))
-    (set! game (game-modify-time
-                t (fn t game)))))
+    (set! game
+          (game-animate-buttons
+           (game-modify-time
+            t (fn t game))))))
 
 (define (top-render-game ctx game)
   (let ((fn (game-render game)))
@@ -734,7 +770,7 @@
   (when (not (eq? game 0))
         (ctx.clearRect 0 0 screen-width screen-height)
         (let ((t (- (js "new Date()") load-time)))
-          (set! ctx.fillStyle "#fff");
+          (set! ctx.fillStyle "#000");
 ;;          (ctx.fillText (+ "Time is: " t) 10 750)
           (top-update-game t game)
 
@@ -841,7 +877,7 @@
   (ctx.translate 4 4)
   (wrap-text ctx txt 0 200 1000 100)
   (ctx.restore)
-  (set! ctx.fillStyle "#fff")
+  (set! ctx.fillStyle "#000")
   (wrap-text ctx txt 0 200 1000 100))
 
 (define (nightjar-text ctx txt)
@@ -861,5 +897,5 @@
 
 (define load-time (js "new Date()"))
 
-(set! ctx.fillStyle "#fff")
+(set! ctx.fillStyle "#000")
 (set! ctx.strokeStyle "#000")

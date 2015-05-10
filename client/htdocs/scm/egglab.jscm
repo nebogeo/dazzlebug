@@ -227,7 +227,7 @@
 
 (define (egglab-data-init-land d land)
   (egglab-data-modify-images
-   (egglab-data-modify-land d land) ()))
+   (egglab-data-modify-land d land)) ())
 
 (define (egglab-data-start-game d player-id time eggs offset replicate)
   (list time eggs offset
@@ -261,81 +261,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (nightjar-intro c)
-  (let ((icon-x 150)
-        (icon-y 520))
-    (game-modify-render
-     (lambda (ctx)
-       (ctx.drawImage (find-image "eggs.jpg") 0 0)
-       (set! ctx.font "normal 70pt 'Press Start 2P'")
-       (robo-nightjar-says ctx 22 "Search for my artificial eggs and help ecology and evolution research!" 1)
-       (set! ctx.font "normal 40pt 'Press Start 2P'")
-       (wrap-text ctx "Easter Robot Nightjar says:" 0 160 1000 50)
-       (set! ctx.font "normal 15pt 'Press Start 2P'")
-       (set! ctx.globalAlpha 0.8)
-       (set! ctx.fillStyle "#ffffff")
-       (ctx.fillRect 0 (+ icon-y 140) 1500 100)
-       (set! ctx.globalAlpha 1))
-   (game-modify-buttons
-    (list
-     (image-button
-      ""
-      800 430
-      "rotate" (find-image "yes.png")
-      (lambda (c)
-        (nightjar-menu
-         (game-modify-over-nothing-hook
-          (lambda (c)
-            (game-modify-data
-             (lambda (d)
-               (egglab-data-modify-tooltip d ""))
-             c))
-          (game-modify-data
-           (lambda (d)
-             (msg "init egglab data")
-             (egglab-data-init "none yet.."))
-           c)))))
-
-
-      (image-button
-       "" (+ icon-x 0) (+ icon-y 190) #f (find-image "sensory-ecology.png")
-       (lambda (c)
-         (set! window.location "http://www.sensoryecology.com/")
-         c))
-
-      (image-button
-       "" (+ icon-x 130) (+ icon-y 190) #f (find-image "cuckoos.png")
-       (lambda (c)
-         (set! window.location "http://www2.zoo.cam.ac.uk/africancuckoos/home.html")
-         c))
-
-      (image-button
-       "" (+ icon-x 290) (+ icon-y 200) #f (find-image "exeter.png")
-       (lambda (c)
-         (set! window.location "http://www.exeter.ac.uk/")
-         c))
-
-      (image-button
-       "" (+ icon-x 470) (+ icon-y 190) #f (find-image "cu.png")
-       (lambda (c)
-         (set! window.location "http://www.zoo.cam.ac.uk/")
-         c))
-
-      (image-button
-       "" (+ icon-x 690) (+ icon-y 190) #f (find-image "bbsrc.png")
-       (lambda (c)
-         (set! window.location "http://www.bbsrc.ac.uk/")
-         c))
-
-      (image-button
-       "" (+ icon-x 900) (+ icon-y 190) #f (find-image "foam.png")
-       (lambda (c)
-         (set! window.location "http://fo.am")
-         c))
-
-     )
-    c))))
-
 (define (bg-full-path fn)
   (string-append "/bg/" fn))
 
@@ -365,63 +290,60 @@
         fullpath)))
    (shuffle l)))
 
-(define (nightjar-menu c)
+(define (nightjar-intro c)
   ;; kick off the loading here
-  (async-load-images-null c "MV" (append cf_images cp_images))
+  (async-load-images-null c "CF" bg_images)
 
   (game-modify-render
    (lambda (ctx)
-     (set! ctx.font "normal 30pt 'Press Start 2P'")
-     (wrap-text ctx "Main menu" 0 100 1000 1000)
-     (set! ctx.font "normal 20pt 'Press Start 2P'")
-     (set! ctx.fillStyle "#000")
-     (robo-nightjar-bot-right ctx 22 (text-or-tooltip c "Welcome to egglab! We need your help for our camouflage research!")))
-
+       (set! ctx.fillStyle "#000")
+       (set! ctx.font "normal 40pt 'Press Start 2P'")
+       (wrap-text ctx "See Me?" 0 160 1000 50)
+       (set! ctx.font "normal 15pt 'Press Start 2P'")
+       (wrap-text ctx "Heppy rectagle hunting fun for the whole family..." 0 190 1000 50)
+       (set! ctx.font "normal 15pt 'Press Start 2P'")
+       )
    (game-modify-buttons
     (list
 
      (egglab-button
-      "Play the main game" 600 250 (find-image "bigbutton-1.png")
+      "Play" 600 450 (find-image "bigbutton-1.png")
       "Try and find new eggs. Their camouflage changes as people play."
       (lambda (c)
-        (nightjar-choose-location c)))
+        (async-load-images c "CF" bg_images)
+        (nightjar-research
+         "flicker"
+         (game-modify-data
+          (lambda (d)
+            (dbg
+             (egglab-data-init "CF")))
+          c))))
 
-     (egglab-button
-      "Challenge your friends" 600 450 (find-image "bigbutton-2.png")
-      "Make an Easter egg hunts for your friends to play."
+     (image-button
+      "Sound" 1020 700 "jumpy"
+      (if (zero? (game-mute c))
+          (find-image "mute-off.png")
+          (find-image "mute-on.png"))
       (lambda (c)
-        (set! window.location "egghunt.html")
-        c))
+        (game-modify-buttons
+         (cons
+          (button-modify-drawable
+           (car (game-buttons c))
+           (if (zero? (game-mute c))
+               (find-image "mute-on.png")
+               (find-image "mute-off.png")))
+          (cdr (game-buttons c)))
+         (game-flip-mute c))))
 
     (image-button
-     "Browser check" 500 700 "jumpy" (find-image "button.png")
+     "Browser check" 600 700 "jumpy" (find-image "button.png")
      (lambda (c)
-       (nightjar-browser-test
-         c
-         (list
-           (egg-drawable
-            (list "op" "destination-over" (list "op" "destination-over" (list "op" "destination-over" (list "op" "destination-over" (list "op" "xor" (list "op" "source-atop" (list "terminal" "varying-image" (list 28 13 3.2739866963624955 1) "white-s32-t94.png") (list "terminal" "colour" (list 55 28 157 0.8703617921564728))) (list "terminal" "colour" (list 118 86 251 0.910967790754512))) (list "terminal" "colour" (list 115 35 119 0.5835876541677862))) (list "terminal" "varying-image" (list 27 122 1.9632763059376739 1) "black-s64-t160.png")) (list "op" "source-atop" (list "op" "lighter" (list "terminal" "colour" (list 144 172 77 0.6578607836272568)) (list "terminal" "varying-image" (list 46 86 2.8194386498727835 1) "white-s64-t94.png")) (list "terminal" "colour" (list 167 117 61 0.90661082835868)))) (list "op" "source-over" (list "op" "xor" (list "op" "xor" (list "op" "lighter" (list "op" "xor" (list "terminal" "colour" (list 135 86 127 0.4911911382805556)) (list "terminal" "varying-image" (list 25 44 4.793568064447492 1) "white-s32-t160.png")) (list "op" "lighter" (list "terminal" "constant-image" (list 107 11 0.28197273300820963 1) "themes/huge/2.png") (list "terminal" "colour" (list 189 187 227 0.9408519568387419)))) (list "op" "xor" (list "op" "source-over" (list "terminal" "constant-image" (list 106 19 3.680530600845348 1) "themes/huge/3.png") (list "terminal" "colour" (list 248 7 129 0.23395235161297023))) (list "terminal" "colour" (list 209 113 129 0.9456627382896841)))) (list "op" "source-atop" (list "op" "xor" (list "op" "lighter" (list "terminal" "colour" (list 65 73 9 0.11518095340579748)) (list "terminal" "constant-image" (list 22 98 2.9823036272311585 1) "themes/huge/1.png")) (list "op" "destination-over" (list "terminal" "varying-image" (list 8 117 1.6466068954258226 1) "black-s8.png") (list "terminal" "colour" (list 195 238 4 0.14038369432091713)))) (list "op" "source-atop" (list "op" "lighter" (list "terminal" "colour" (list 100 141 79 0.46338203409686685)) (list "terminal" "colour" (list 142 124 220 0.8470430481247604))) (list "op" "source-over" (list "terminal" "colour" (list 132 77 32 0.3010143404826522)) (list "terminal" "colour" (list 13 250 253 0.11273922072723508)))))) (list "op" "source-atop" (list "op" "destination-over" (list "op" "source-over" (list "op" "source-over" (list "terminal" "varying-image" (list 15 60 1.4502151114479638 1) "black-s32-t94.png") (list "terminal" "colour" (list 219 2 212 0.9857645118609071))) (list "terminal" "colour" (list 93 205 54 0.6608885279856622))) (list "op" "xor" (list "op" "lighter" (list "terminal" "colour" (list 40 255 215 0.8694649131502956)) (list "terminal" "colour" (list 190 42 242 0.8041096965316683))) (list "op" "lighter" (list "terminal" "colour" (list 250 207 66 0.11774504813365638)) (list "terminal" "colour" (list 172 243 253 0.7434877760242671))))) (list "op" "destination-over" (list "op" "source-over" (list "terminal" "constant-image" (list 31 118 0.34600835539586844 1) "themes/huge/7.png") (list "op" "xor" (list "terminal" "colour" (list 11 136 193 0.7133486801758409)) (list "terminal" "constant-image" (list 56 83 5.519698559149169 1) "themes/huge/3.png"))) (list "op" "source-over" (list "op" "xor" (list "terminal" "colour" (list 167 89 136 0.9118920972105116)) (list "terminal" "colour" (list 17 148 46 0.6642281892709434))) (list "terminal" "constant-image" (list 83 68 2.780523863194976 1) "themes/huge/1.png"))))))
-            #f #t)
-           (egg-drawable
-            (list "op" "destination-over" (list "op" "xor" (list "op" "destination-over" (list "op" "xor" (list "op" "source-over" (list "op" "destination-over" (list "terminal" "constant-image" (list 93 14 0.7768339076070115 1) "themes/huge/6.png") (list "terminal" "varying-image" (list 23 14 4.409712414161302 1) "white-s64.png")) (list "op" "lighter" (list "terminal" "colour" (list 223 170 104 0.24341767560690641)) (list "terminal" "colour" (list 105 11 233 0.4464006912894547)))) (list "op" "source-over" (list "op" "source-atop" (list "terminal" "colour" (list 241 80 87 0.62650335743092)) (list "terminal" "constant-image" (list 56 92 5.728292080915533 1) "themes/huge/8.png")) (list "op" "xor" (list "terminal" "constant-image" (list 44 9 2.6834987869570033 1) "themes/huge/6.png") (list "terminal" "colour" (list 162 107 18 0.02287440304644406))))) (list "op" "source-atop" (list "op" "destination-over" (list "op" "xor" (list "terminal" "colour" (list 135 54 51 0.6036044149659574)) (list "terminal" "colour" (list 255 36 44 0.6338184340856969))) (list "op" "source-over" (list "terminal" "colour" (list 224 202 91 0.9362531783990562)) (list "terminal" "constant-image" (list 94 59 3.4917845970955677 1) "themes/huge/5.png"))) (list "op" "source-over" (list "op" "xor" (list "terminal" "colour" (list 42 158 2 0.7966847247444093)) (list "terminal" "colour" (list 237 89 114 0.7782308124005795))) (list "op" "destination-over" (list "terminal" "varying-image" (list 125 51 1.7824165334645659 1) "black-s8-t160.png") (list "terminal" "colour" (list 204 128 246 0.5585482337046415)))))) (list "op" "source-atop" (list "terminal" "colour" (list 178 233 195 0.8368935994803905)) (list "terminal" "colour" (list 88 81 30 0.7772741138469428)))) (list "op" "lighter" (list "op" "xor" (list "op" "xor" (list "op" "source-over" (list "op" "lighter" (list "terminal" "colour" (list 14 191 228 0.327065487857908)) (list "terminal" "colour" (list 0 117 106 0.1958908815868199))) (list "op" "destination-over" (list "terminal" "constant-image" (list 19 86 4.805766109064687 1) "themes/huge/5.png") (list "terminal" "varying-image" (list 35 20 3.1297883553667925 1) "white-s16-t94.png"))) (list "op" "xor" (list "op" "destination-over" (list "terminal" "colour" (list 220 26 173 0.19008610886521637)) (list "terminal" "colour" (list 91 235 53 0.14606734784319997))) (list "op" "xor" (list "terminal" "constant-image" (list 80 21 5.8576460657408465 1) "themes/huge/1.png") (list "terminal" "constant-image" (list 26 57 2.2727518589906395 1) "themes/huge/5.png")))) (list "op" "xor" (list "op" "destination-over" (list "op" "lighter" (list "terminal" "constant-image" (list 93 4 6.257198647742159 1) "themes/huge/1.png") (list "terminal" "constant-image" (list 98 10 1.3173266110257245 1) "themes/huge/4.png")) (list "terminal" "constant-image" (list 35 47 5.123617461645976 1) "themes/huge/2.png")) (list "op" "lighter" (list "op" "source-atop" (list "terminal" "constant-image" (list 65 64 0.13099828269006686 1) "themes/huge/1.png") (list "terminal" "constant-image" (list 72 86 4.805740773178171 1) "themes/huge/7.png")) (list "terminal" "colour" (list 119 238 79 0.7350334525108337))))) (list "op" "source-over" (list "op" "destination-over" (list "op" "source-atop" (list "op" "source-atop" (list "terminal" "constant-image" (list 51 21 5.1431183203202675 1) "themes/huge/2.png") (list "terminal" "constant-image" (list 107 49 3.8560518729798496 1) "themes/huge/8.png")) (list "op" "lighter" (list "terminal" "colour" (list 59 191 180 0.981713202316314)) (list "terminal" "constant-image" (list 19 74 5.575763939023018 1) "themes/huge/2.png"))) (list "op" "destination-over" (list "op" "destination-over" (list "terminal" "constant-image" (list 39 114 2.0770555496318264 1) "themes/huge/3.png") (list "terminal" "colour" (list 11 24 18 0.3138679803814739))) (list "op" "source-atop" (list "terminal" "colour" (list 135 224 58 0.8056498966179788)) (list "terminal" "colour" (list 127 214 30 0.26338237966410816))))) (list "op" "source-over" (list "op" "source-over" (list "op" "lighter" (list "terminal" "colour" (list 59 88 205 0.7406738304998726)) (list "terminal" "colour" (list 21 210 43 0.25459089362993836))) (list "op" "destination-over" (list "terminal" "varying-image" (list 102 102 1.1106744146319105 1) "white-s8-t160.png") (list "terminal" "colour" (list 214 162 132 0.5170850085560232)))) (list "op" "source-atop" (list "op" "destination-over" (list "terminal" "colour" (list 166 243 28 0.7843350195325911)) (list "terminal" "varying-image" (list 92 63 5.422653036637231 1) "white-s64.png")) (list "op" "source-atop" (list "terminal" "colour" (list 193 12 249 0.19117056392133236)) (list "terminal" "varying-image" (list 36 4 1.1696042035482823 1) "black-s8-t94.png")))))))
-            #f #t)
-           (egg-drawable
-            (list "op" "lighter" (list "op" "xor" (list "op" "destination-over" (list "op" "source-atop" (list "op" "source-atop" (list "op" "xor" (list "terminal" "varying-image" (list 23 21 2.699912258262746 1) "black-s64-t94.png") (list "terminal" "varying-image" (list 83 98 2.8463397023901345 1) "white-s64-t94.png")) (list "op" "destination-over" (list "terminal" "varying-image" (list 115 85 1.9439046395150945 1) "white-s16.png") (list "terminal" "varying-image" (list 53 45 5.231206632829271 1) "white-s16-t160.png"))) (list "op" "destination-over" (list "op" "source-atop" (list "terminal" "colour" (list 13 172 133 0.484733700286597)) (list "terminal" "colour" (list 87 193 14 0.07065510004758835))) (list "op" "source-atop" (list "terminal" "constant-image" (list 61 58 1.4320630398904906 1) "themes/huge/5.png") (list "terminal" "constant-image" (list 52 105 0.9887309104115702 1) "themes/huge/4.png")))) (list "op" "lighter" (list "op" "destination-over" (list "op" "source-atop" (list "terminal" "colour" (list 248 64 98 0.6288095712661743)) (list "terminal" "varying-image" (list 90 52 1.8103149835718795 1) "black-s16-t94.png")) (list "terminal" "constant-image" (list 55 41 0.5296724676629528 1) "themes/huge/1.png")) (list "op" "source-atop" (list "op" "source-atop" (list "terminal" "colour" (list 190 46 41 0.6083550138864666)) (list "terminal" "colour" (list 116 42 233 0.35647614882327616))) (list "op" "lighter" (list "terminal" "constant-image" (list 89 120 0.39258975617587566 1) "themes/huge/7.png") (list "terminal" "colour" (list 193 188 222 0.12810118310153484)))))) (list "op" "xor" (list "op" "destination-over" (list "op" "xor" (list "op" "lighter" (list "terminal" "colour" (list 185 96 155 0.5319427629001439)) (list "terminal" "colour" (list 150 136 110 0.058547641383484006))) (list "op" "source-over" (list "terminal" "colour" (list 86 249 57 0.7702281903475523)) (list "terminal" "constant-image" (list 109 49 4.555632978205104 1) "themes/huge/7.png"))) (list "op" "destination-over" (list "op" "source-atop" (list "terminal" "colour" (list 249 3 203 0.08698589028790593)) (list "terminal" "colour" (list 83 222 124 0.40039796754717827))) (list "op" "lighter" (list "terminal" "constant-image" (list 79 41 5.635120288494509 1) "themes/huge/3.png") (list "terminal" "colour" (list 124 172 140 0.5334489275701344))))) (list "terminal" "constant-image" (list 30 49 0.06380805721599608 1) "themes/huge/4.png"))) (list "op" "xor" (list "op" "lighter" (list "op" "source-atop" (list "op" "source-over" (list "op" "destination-over" (list "terminal" "colour" (list 243 159 61 0.0031860475428402424)) (list "terminal" "colour" (list 128 51 179 0.5545554654672742))) (list "op" "destination-over" (list "terminal" "colour" (list 221 195 7 0.9081218643113971)) (list "terminal" "varying-image" (list 41 15 0.2599525522934273 1) "white-s16-t160.png"))) (list "terminal" "colour" (list 62 148 109 0.25347747979685664))) (list "op" "lighter" (list "op" "destination-over" (list "op" "destination-over" (list "terminal" "constant-image" (list 111 90 4.052207548493519 1) "themes/huge/7.png") (list "terminal" "varying-image" (list 102 116 1.2157214114544914 1) "black-s64-t160.png")) (list "op" "source-atop" (list "terminal" "constant-image" (list 90 64 5.518592142067384 1) "themes/huge/3.png") (list "terminal" "varying-image" (list 42 109 4.500905730100349 1) "white-s16.png"))) (list "terminal" "colour" (list 222 131 218 0.15156375337392092)))) (list "op" "xor" (list "terminal" "constant-image" (list 84 79 5.406734956361354 1) "themes/huge/2.png") (list "terminal" "constant-image" (list 89 106 6.142104450768326 1) "themes/huge/3.png"))))
-            #f #t)
-           (egg-drawable
-            (list "op" "source-atop" (list "op" "lighter" (list "op" "destination-over" (list "terminal" "varying-image" (list 102 101 4.4200357114118525 1) "black-s16-t160.png") (list "op" "lighter" (list "op" "xor" (list "terminal" "constant-image" (list 25 13 3.904700188896619 1) "themes/huge/2.png") (list "op" "xor" (list "terminal" "constant-image" (list 58 125 6.041546501480509 1) "themes/huge/5.png") (list "terminal" "colour" (list 134 107 244 0.9441638826392591)))) (list "op" "xor" (list "op" "source-atop" (list "terminal" "constant-image" (list 17 84 1.72235100441752 1) "themes/huge/4.png") (list "terminal" "colour" (list 51 249 192 0.5698356309439987))) (list "terminal" "colour" (list 131 181 195 0.6758348126895726))))) (list "op" "destination-over" (list "terminal" "varying-image" (list 66 33 2.4679795202678068 1) "black-s32-t160.png") (list "op" "lighter" (list "op" "destination-over" (list "op" "destination-over" (list "terminal" "colour" (list 165 62 92 0.3835061981808394)) (list "terminal" "varying-image" (list 22 21 2.3109369817902334 1) "black-s16.png")) (list "op" "source-atop" (list "terminal" "constant-image" (list 75 125 3.1159060227870943 1) "themes/huge/8.png") (list "terminal" "colour" (list 228 0 255 0.3015594589523971)))) (list "op" "source-over" (list "op" "lighter" (list "terminal" "colour" (list 46 217 107 0.7898308904841542)) (list "terminal" "colour" (list 185 25 92 0.1364137688651681))) (list "terminal" "colour" (list 86 198 85 0.629379362333566)))))) (list "op" "destination-over" (list "op" "lighter" (list "terminal" "colour" (list 170 132 193 0.4517463643569499)) (list "terminal" "colour" (list 130 139 117 0.25632687797769904))) (list "op" "source-atop" (list "op" "xor" (list "op" "xor" (list "terminal" "colour" (list 221 217 46 0.21676060766912997)) (list "op" "xor" (list "terminal" "constant-image" (list 114 55 5.199511391993612 1) "themes/huge/3.png") (list "terminal" "varying-image" (list 76 34 0.8197396273501217 1) "black-s64-t94.png"))) (list "op" "destination-over" (list "terminal" "colour" (list 39 183 46 0.06466573989018798)) (list "op" "destination-over" (list "terminal" "constant-image" (list 120 3 1.693498762469273 1) "themes/huge/8.png") (list "terminal" "constant-image" (list 15 80 2.5159992379504255 1) "themes/huge/1.png")))) (list "op" "xor" (list "terminal" "colour" (list 61 175 180 0.3262835599016398)) (list "op" "source-atop" (list "op" "destination-over" (list "terminal" "constant-image" (list 29 72 4.4429805027949625 1) "themes/huge/7.png") (list "terminal" "colour" (list 96 9 146 0.21449804888106883))) (list "op" "destination-over" (list "terminal" "constant-image" (list 34 106 3.1176813412061892 1) "themes/huge/5.png") (list "terminal" "colour" (list 237 184 177 0.40582278929650784))))))))
-            #f #t)
-           (egg-drawable
-            (list "op" "source-over" (list "op" "source-atop" (list "op" "lighter" (list "op" "source-atop" (list "terminal" "varying-image" (list 19 96 4.90786541692866 1) "white-s16-t94.png") (list "op" "source-over" (list "op" "source-atop" (list "terminal" "varying-image" (list 13 29 4.323387821319513 1) "black-s32.png") (list "terminal" "varying-image" (list 96 125 5.572854882830288 1) "black-s64-t94.png")) (list "op" "destination-over" (list "terminal" "colour" (list 190 106 75 0.0026503177359700203)) (list "terminal" "constant-image" (list 96 118 0.8829496189858764 1) "themes/huge/3.png")))) (list "terminal" "constant-image" (list 56 70 3.774096392482985 1) "themes/huge/4.png")) (list "op" "destination-over" (list "op" "xor" (list "terminal" "colour" (list 32 208 225 0.4687961039599031)) (list "op" "lighter" (list "terminal" "constant-image" (list 120 46 3.673237756156828 1) "themes/huge/3.png") (list "op" "destination-over" (list "terminal" "constant-image" (list 76 78 4.855753260281403 1) "themes/huge/2.png") (list "terminal" "colour" (list 26 97 186 0.08064342080615461))))) (list "op" "destination-over" (list "terminal" "varying-image" (list 33 11 4.196356338100042 1) "black-s16-t94.png") (list "op" "source-over" (list "op" "source-over" (list "terminal" "colour" (list 225 160 109 0.45700589660555124)) (list "terminal" "constant-image" (list 62 31 3.3544630083627998 1) "themes/huge/6.png")) (list "op" "source-over" (list "terminal" "constant-image" (list 21 43 2.0972477904525584 1) "themes/huge/8.png") (list "terminal" "varying-image" (list 17 38 4.633508964119945 1) "black-s64-t160.png")))))) (list "op" "source-atop" (list "op" "destination-over" (list "op" "xor" (list "terminal" "varying-image" (list 64 125 3.5522099478011953 1) "black-s16-t94.png") (list "terminal" "varying-image" (list 17 58 4.823655060083605 1) "white-s16-t160.png")) (list "op" "lighter" (list "op" "lighter" (list "op" "xor" (list "terminal" "colour" (list 209 203 243 0.7533332952298224)) (list "terminal" "varying-image" (list 10 19 6.095064562881365 1) "black-s64-t160.png")) (list "op" "source-atop" (list "terminal" "colour" (list 114 104 177 0.9378137674648315)) (list "terminal" "constant-image" (list 29 77 4.0423863499495205 1) "themes/huge/2.png"))) (list "op" "destination-over" (list "op" "lighter" (list "terminal" "colour" (list 141 219 164 0.7755052233114839)) (list "terminal" "constant-image" (list 22 98 2.48491827315744 1) "themes/huge/3.png")) (list "op" "lighter" (list "terminal" "constant-image" (list 82 104 2.721005482231267 1) "themes/huge/4.png") (list "terminal" "colour" (list 121 249 215 0.7727555297315121)))))) (list "op" "source-atop" (list "op" "xor" (list "op" "source-over" (list "op" "source-over" (list "terminal" "colour" (list 49 15 224 0.002406015060842037)) (list "terminal" "constant-image" (list 71 18 0.40954947311477735 1) "themes/huge/6.png")) (list "op" "xor" (list "terminal" "constant-image" (list 120 31 1.2368566498174332 1) "themes/huge/6.png") (list "terminal" "varying-image" (list 104 74 3.430667694577016 1) "black-s16.png"))) (list "terminal" "colour" (list 101 203 221 0.8350488368887454))) (list "op" "xor" (list "terminal" "colour" (list 177 136 99 0.6388995668385178)) (list "terminal" "colour" (list 159 182 36 0.9357330144848675))))))
-            #f #t)
-           )
-           )))
-
-    (image-button
-     "Website" 150 700 "jumpy" (find-image "button.png")
-     (lambda (c)
-       (set! window.location "http://nightjar.exeter.ac.uk")
        c))
+
+    (image-button
+     "More..." 870 700 "jumpy" (find-image "button.png")
+     (lambda (c)
+       (nightjar-env c)))
 
 
      )
@@ -456,89 +378,7 @@
      )
     c)))
 
-
-
 ;;(robo-nightjar-says-bottom ctx 20 "Choose which species' nest sites you want to try - I have different eggs for each.")
-
-(define (nightjar-choose-location c)
-  (game-modify-render
-   (lambda (ctx)
-     (set! ctx.font "normal 30pt 'Press Start 2P'")
-     (wrap-text ctx "Discover new patterns" 0 100 1000 1000)
-     (robo-nightjar-says-bottom
-      ctx 20 (text-or-tooltip c "Choose a species eggs you want to find - I have different eggs for each."))
-     (set! ctx.font "normal 20pt 'Press Start 2P'")
-     (ctx.drawImage (find-image "cf.png") 0 120)
-     (ctx.drawImage (find-image "mv.png") 405 120)
-     (ctx.drawImage (find-image "cp.png") 830 120)
-     (set! ctx.fillStyle "#000")
-     )
-
-   (game-modify-buttons
-    (list
-
-    (image-button
-     "Sound" 1020 700 "jumpy"
-     (if (zero? (game-mute c))
-         (find-image "mute-off.png")
-         (find-image "mute-on.png"))
-     (lambda (c)
-       (game-modify-buttons
-        (cons
-         (button-modify-drawable
-          (car (game-buttons c))
-          (if (zero? (game-mute c))
-              (find-image "mute-on.png")
-              (find-image "mute-off.png")))
-         (cdr (game-buttons c)))
-        (game-flip-mute c))))
-
-    (image-button
-     "Back" 1170 700 "jumpy" (find-image "button.png")
-     (lambda (c) (nightjar-menu c)))
-
-
-    (image-button
-     "More..." 870 700 "jumpy" (find-image "button.png")
-     (lambda (c)
-       (nightjar-env c)))
-
-    (egglab-button
-     "Mozambique nightjar" 200 500 (find-image "play-button.png")
-     "This nightjar likes to lay its eggs in open areas."
-      (lambda (c)
-        (async-load-images c "CF" cf_images)
-        (nightjar-research
-         "flicker"
-         (game-modify-data
-          (lambda (d) (egglab-data-init-land d "CF"))
-          c))))
-
-    (egglab-button
-     "Pennant-winged nightjar" 605 500
-     (find-image "play-button.png")
-     "This nightjar is not fussy and likes to nest anywhere."
-     (lambda (c)
-       (async-load-images c "MV" (append cf_images cp_images))
-       (nightjar-research
-        "flicker"
-        (game-modify-data
-         (lambda (d) (egglab-data-init-land d "MV"))
-         c))))
-
-    (egglab-button
-     "Fiery-necked nightjar" 1030 500
-     (find-image "play-button.png")
-     "This nightjar likes nesting in leaf litter."
-     (lambda (c)
-       (async-load-images c "CP" cp_images)
-       (nightjar-research
-        "flicker"
-        (game-modify-data
-         (lambda (d) (egglab-data-init-land d "CP"))
-         c)))))
-
-    c)))
 
 (define (nightjar-about c)
   (game-modify-render
@@ -1020,10 +860,8 @@
              (bg-full-path land i))
            (shuffle
             (cond
-             ((eq? land "CF") cf_images)
-             ((eq? land "CP") cp_images)
-             ((eq? land "MV") (append cf_images cp_images))
-             (else (msg "oops") cf_images)))))))
+             ((eq? land "CF") bg_images)
+             (else (msg "oops") bg_images)))))))
    c))
 
 (define (egglab-add-time t d)
@@ -1100,8 +938,8 @@
 (define (flicker-build-egg c)
   (let ((egg (car (egglab-data-eggs (game-data c)))))
     (let ((pos (individual-pos egg)))
-      (image-button
-       "" (car pos) (cadr pos) #f
+      (animated-button
+       "" (car pos) (cadr pos) 1 0 #f
        (individual-drawable egg)
        (lambda (c)
          (submit-egg egg c)
@@ -1374,81 +1212,7 @@
  (lambda ()
    (start-game canvas ctx)))
 
-(define cf_images
+(define bg_images
   (list
-"CF/CF001_L_V_2012-c.jpg"
-"CF/CF001_L_V_2013-c.jpg"
-"CF/CF002_L_V_2012-c.jpg"
-"CF/CF002_R_V_2013-c.jpg"
-"CF/CF004_R_V_2012-c.jpg"
-"CF/CF005_L_V_2012-c.jpg"
-"CF/CF005_R_V_2013-c.jpg"
-"CF/CF006_L_V_2013-c.jpg"
-"CF/CF006_R_V_2013-c.jpg"
-"CF/CF008_L_V_2013-c.jpg"
-"CF/CF008_R_V_2013-c.jpg"
-"CF/CF010_L_V_2013-c.jpg"
-"CF/CF010_R_V_2013-c.jpg"
-"CF/CF011_L_V_2013-c.jpg"
-"CF/CF012_L_V_2012-c.jpg"
-"CF/CF012_L_V_2013-c.jpg"
-"CF/CF012_R_V_2013-c.jpg"
-"CF/CF013_L_V_2013-c.jpg"
-"CF/CF015_L_V_2012-c.jpg"
-"CF/CF015_R_V_2012-c.jpg"
-"CF/CF016_L_V_2013-c.jpg"
-"CF/CF016_R_V_2013-c.jpg"
-"CF/CF017_L_V_2012-c.jpg"
-"CF/CF018_L_V_2013-c.jpg"
-"CF/CF018_R_V_2013-c.jpg"
-"CF/CF020_L_V_2013-c.jpg"
-"CF/CF022_R_V_2012-c.jpg"
-"CF/CF025_L_V_2012-c.jpg"
-"CF/CF025_R_V_2012-c.jpg"
-"CF/CF026_L_V_2012-c.jpg"
-"CF/CF026_R_V_2012-c.jpg"
-"CF/CF027_L_V_2012-c.jpg"
-"CF/CF027_L_V_2013-c.jpg"
-"CF/CF027_R_V_2013-c.jpg"
-"CF/CF028_L_V_2013-c.jpg"
-"CF/CF031_L_V_2012-c.jpg"))
-
-
-(define cp_images
-  (list
-"CP/CP002_R_V_2013-c.jpg"
-"CP/CP004_R_V_2013-c.jpg"
-"CP/CP005_L_V_2013-c.jpg"
-"CP/CP007_L_V_2013-c.jpg"
-"CP/CP007_R_V_2013-c.jpg"
-"CP/CP008_R_V_2013-c.jpg"
-"CP/CP009_R_V_2013-c.jpg"
-"CP/CP010_L_V_2013-c.jpg"
-"CP/CP010_R_V_2013-c.jpg"
-"CP/CP011_L_V_2012-c.jpg"
-"CP/CP011_R_V_2013-c.jpg"
-"CP/CP012_L_V_2012-c.jpg"
-"CP/CP013_R_V_2013-c.jpg"
-"CP/CP014_R_V_2012-c.jpg"
-"CP/CP014_R_V_2013-c.jpg"
-"CP/CP015_R_V_2013-c.jpg"
-"CP/CP016_L_V_2012-c.jpg"
-"CP/CP016_R_V_2012-c.jpg"
-"CP/CP017_L_V_2012-c.jpg"
-"CP/CP017_L_V_2013-c.jpg"
-"CP/CP017_R_V_2012-c.jpg"
-"CP/CP018_R_V_2013-c.jpg"
-"CP/CP019_R_V_2012-c.jpg"
-"CP/CP021_R_V_2013-c.jpg"
-"CP/CP023_L_V_2013-c.jpg"
-"CP/CP024_L_V_2013-c.jpg"
-"CP/CP025_L_V_2013-c.jpg"
-"CP/CP025_R_V_2012-c.jpg"
-"CP/CP025_R_V_2013-c.jpg"
-"CP/CP028_L_V_2013-c.jpg"
-"CP/CP029_L_V_2012-c.jpg"
-"CP/CP029_R_V_2013-c.jpg"
-"CP/CP030_L_V_2013-c.jpg"
-"CP/CP032_L_V_2012-c.jpg"
-"CP/CP035_L_V_2013-c.jpg"
-"CP/CP041_L_V_2013-c.jpg"
+   "bg-a.jpg"
+   "bg-b.jpg"))

@@ -36,7 +36,7 @@
 ;;(unsafe!)
 ;;(define setuid (get-ffi-obj 'setuid #f (_fun _int -> _int)))
 
-(define db-name "egglab.db")
+(define db-name "seeme.db")
 (define db (open-db db-name))
 (open-log "log.txt")
 
@@ -86,7 +86,7 @@
     (req 'sample '(player-id population replicate count))
     (lambda (player-id population replicate count)
     (syncro
-       (lambda ()
+     (lambda ()
       (let ((samples (pop-sample
                       db population
                       (string->number replicate)
@@ -248,6 +248,7 @@
 
 (define (start request)
   (let ((values (url-query (request-uri request))))
+    (msg values)
     (if (not (null? values))   ; do we have some parameters?
         (let ((name (assq 'fn values)))
           (if name           ; is this a well formed request?
