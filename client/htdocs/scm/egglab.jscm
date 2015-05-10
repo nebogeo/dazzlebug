@@ -298,9 +298,11 @@
    (lambda (ctx)
        (set! ctx.fillStyle "#000")
        (set! ctx.font "normal 40pt 'Press Start 2P'")
-       (wrap-text ctx "See Me?" 0 160 1000 50)
+       (wrap-text ctx "See me, click me!" 0 160 1000 60)
+       (set! ctx.font "normal 30pt 'Press Start 2P'")
+       (wrap-text ctx "(extremely beta)" 0 220 1000 60)
        (set! ctx.font "normal 15pt 'Press Start 2P'")
-       (wrap-text ctx "Heppy rectagle hunting fun for the whole family..." 0 190 1000 50)
+       (wrap-text ctx "Wholesome citizen science rectangle hunting fun for the whole family..." 0 260 1000 25)
        (set! ctx.font "normal 15pt 'Press Start 2P'")
        )
    (game-modify-buttons
@@ -641,11 +643,12 @@
    (lambda (t c) c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-says ctx 18 "Try and click on the boxes as fast as you can. Small differences help to make better camouflage patterns.")
-
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx "Are you happy for us to use your timing information?" 0 100 1000 60)
       (set! ctx.font "normal 15pt 'Press Start 2P'")
-      (wrap-text ctx "Are you happy for us to use your timing information?" 0 100 1000 70)
-      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+      (wrap-text ctx "Try and click on the boxes as fast as you can. Small differences help to make better camouflage patterns." 0 250 600 30)
+
+      )
 
     (game-modify-buttons
      (list
@@ -698,7 +701,8 @@
      c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-says ctx 25 "Please wait while I generate some eggs just for you... GET READY TO PLAY!"))
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx "Generating camouflage... GET READY TO PLAY!" 0 250 600 30))
     (game-modify-buttons (list) c))))
 
 (define (nightjar-thanks c)
@@ -939,7 +943,9 @@
   (let ((egg (car (egglab-data-eggs (game-data c)))))
     (let ((pos (individual-pos egg)))
       (animated-button
-       "" (car pos) (cadr pos) 50 40 #f
+       "" (car pos) (cadr pos)
+       (random-range -50 50)
+       (random-range -50 50) #f
        (individual-drawable egg)
        (lambda (c)
          (submit-egg egg c)
@@ -1215,4 +1221,29 @@
 (define bg_images
   (list
    "bg-a.jpg"
-   "bg-b.jpg"))
+   "bg-b.jpg"
+   "bg-c.jpg"
+   "bg-d.jpg"
+   "bg-e.jpg"
+   "bg-f.jpg"
+   "bg-g.jpg"
+   "bg-h.jpg"
+   "bg-i.jpg"
+   "bg-j.jpg"
+   "bg-k.jpg"
+   "bg-l.jpg"
+   "bg-m.jpg"
+   "bg-n.jpg"
+   "bg-o.jpg"
+   "bg-p.jpg"
+   "bg-q.jpg"
+   "bg-r.jpg"
+   "bg-s.jpg"
+   "bg-t.jpg"
+   "bg-u.jpg"
+   "bg-v.jpg"
+   "bg-w.jpg"
+   "bg-x.jpg"
+   "bg-y.jpg"
+   "bg-z.jpg"
+   ))
