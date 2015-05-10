@@ -1,0 +1,1454 @@
+;; -*- mode: scheme; -*-
+;; Egglab Copyright (C) 2013 Dave Griffiths
+;;
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU Affero General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU Affero General Public License for more details.
+;;
+;; You should have received a copy of the GNU Affero General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gp
+
+(define num-eggs-total 20)
+(define num-eggs-from-population 20)
+(define num-best-eggs 16)
+(define selection-pop-size 256)
+(define photo-time-allowed 10)
+
+(define (make-individual id fitness ancestral-fitness generation parent drawable egg pos phase)
+  (list id fitness ancestral-fitness generation parent drawable egg pos phase))
+
+(define (individual-id i) (list-ref i 0))
+(define (individual-fitness i) (list-ref i 1))
+(define (individual-modify-fitness i v) (list-replace i 1 v))
+(define (individual-ancestral-fitness i) (list-ref i 2))
+(define (individual-generation i) (list-ref i 3))
+(define (individual-parent i) (list-ref i 4))
+(define (individual-drawable i) (list-ref i 5))
+(define (individual-egg i) (list-ref i 6))
+(define (individual-pos i) (list-ref i 7))
+(define (individual-phase i) (list-ref i 8))
+
+(define world-w 5000)
+(define world-h 500)
+
+(define safe-x 0.2)
+(define safe-y 0.2)
+
+(define (generate-image-pos)
+  (list (* screen-width (+ safe-x (* (rndf) (- 1 (* safe-x 2)))))
+        (* screen-height (+ safe-y (* (rndf) (- 1 (* safe-y 2)))))))
+
+(define (generate-image-pos2)
+  (list (+ 100 (random (- screen-width 200)))
+        (+ 100 (random (- screen-height 200)))))
+
+(define (make-pos game)
+  (if (eq? game "flicker")
+      (generate-image-pos2)
+      (list (random world-w) (random world-h))))
+
+(define (sqr x) (* x x))
+
+(define (calc-mutation-rate)
+  (* (sqr (* (rndf) 3.16227766)) 0.01)) ;; sqrt of 10 = 0-10%
+
+(define (make-population game samples mutate phase)
+  (if (not (eq? phase "init"))
+      (map
+       (lambda (sample)
+         (let ((program (if (zero? mutate)
+                            (list-ref sample 0)
+                            (egg-mutate (list-ref sample 0)
+                                        (calc-mutation-rate))))
+               (ancestral-fitness (list-ref sample 1))
+               (generation (list-ref sample 2))
+               (id (list-ref sample 3)))
+           (make-individual
+            id
+            0
+            ancestral-fitness
+            (+ generation 1)
+            id
+            (egg-drawable program #t)
+            program
+            (make-pos game)
+            phase)))
+       (shuffle samples))
+
+      (build-list
+       num-eggs-total
+       (lambda (i)
+         ;; fixme
+         (msg "making random egg")
+         (let ((program (make-random-egg egg-complexity)))
+           (make-individual
+            0 0 0 0 0 (egg-drawable program #t)
+            program
+            (make-pos game)
+            phase))))))
+
+(define (make-egg-grid game samples x-off)
+  (index-map
+   (lambda (i sample)
+     (let ((program (car sample))
+           (fitness (cadr sample))
+           (id (list-ref sample 2)))
+       (let ((x (modulo i 4)) (y (Math.floor (/ i 4))))
+         (let ((xx (+ 80 (* x 90)))
+               (yy (+ 150 (* y 120))))
+           (list
+            (make-individual
+             id
+             0 0 0 0
+             (egg-drawable program #f)
+             program
+             (list (+ x-off xx) yy))
+            (string-append
+             (time-to-seconds fitness)
+             " : " (list-ref sample 3)
+             " : " (list-ref sample 4)))))))
+   samples))
+
+(define (make-best-population game samplesa samplesb samplesc)
+  (append
+   (make-egg-grid game samplesa 0)
+   (make-egg-grid game samplesb 400)
+   (make-egg-grid game samplesc 800)))
+
+(define (draw-genome-node ctx program centrex centrey posx posy d apa start end n dist)
+  (let ((childstart (+ start (* apa n))))
+    (let ((childend (+ childstart apa)))
+      (let ((tox (+ centrex (* (sin (+ childstart (* (/ (- childend childstart) 2.0)))) (+ d 1) dist)))
+            (toy (+ centrey (* (cos (+ childstart (* (/ (- childend childstart) 2.0)))) (+ d 1) dist))))
+        (set! ctx.strokeStyle "#000")
+        (set! ctx.lineWidth 2)
+        (ctx.beginPath)
+        (ctx.moveTo posx posy)
+        (ctx.lineTo tox toy)
+        (ctx.stroke)
+        (inner-draw-genome ctx program centrex centrey (+ d 1) childstart childend dist)))))
+
+(define (lerp a b t) (+ (* b t) (* a (- 1 t))))
+
+(define (inner-draw-genome ctx program centrex centrey d start end dist)
+  (let ((sc (lerp 0.5 0.3 (/ d 6))))
+    (let ((posx (+ centrex (* (sin (+ start (* (/ (- end start) 2.0)))) d dist)))
+          (posy (+ centrey (* (cos (+ start (* (/ (- end start) 2.0)))) d dist)))
+          (size (* sc 128)))
+      (set! ctx.strokeStyle "#000")
+      (set! ctx.lineWidth 2)
+      (ctx.strokeRect (- posx (/ size 2)) (- posy (/ size 2)) size size)
+      (if (eq? (program-type program) "terminal")
+          (let ((tcanvas (document.createElement "canvas")))
+            (set! tcanvas.width size)
+            (set! tcanvas.height size)
+            (let ((tctx (tcanvas.getContext "2d")))
+              (tctx.scale sc sc)
+              (draw-terminal tctx program)
+              (ctx.drawImage tcanvas (- posx (/ size 2)) (- posy (/ size 2)))))
+          (let ((apa (/ (- end start) 2)))
+
+            (draw-genome-node ctx (operator-operand-a program)
+                              centrex centrey posx posy d apa start end 0 dist)
+            (draw-genome-node ctx (operator-operand-b program)
+                              centrex centrey posx posy d apa start end 1 dist)
+
+            (ctx.save)
+            (ctx.translate (- posx (/ size 2))
+                           (- posy (/ size 2)))
+            (ctx.scale sc sc)
+            (draw-op ctx program)
+            (set! ctx.fillStyle "#000")
+            (set! ctx.font "normal 15pt 'Press Start 2P'")
+            (fill-centre-text ctx (operator-type program) 64
+                              (if (eq? d 0) 200 180))
+            (ctx.restore))))))
+
+(define (render-egg-genome ctx egg centrex centrey)
+  (let ((canvas (document.createElement "canvas")))
+    (set! canvas.width screen-width)
+    (set! canvas.height screen-height)
+    (let ((ctx (canvas.getContext "2d")))
+      (ctx.beginPath)
+      (ctx.arc centrex centrey 500 0 (* 2 Math.PI) #f)
+      (set! ctx.fillStyle "#278")
+      (ctx.fill)
+      (inner-draw-genome ctx egg centrex centrey 0 0 (* 2 3.141) 65)
+      (set! ctx.fillStyle "#fff"))
+    canvas))
+
+
+(define (render-egg-family-tree ancestors)
+  (map
+   (lambda (anc)
+     (egg-drawable (JSON.parse (list-ref (car anc) 1)) #f))
+   ancestors))
+
+(define (draw-egg-family-tree ctx ancestors eggs)
+
+  (let ((w (/ (- screen-width 400) (length ancestors))))
+    (set! ctx.fillStyle "#000")
+    (set! ctx.font "normal 15pt 'Press Start 2P'")
+
+    (index-for-each
+     (lambda (i anc)
+       (let ((x (+ (* i w) 100)))
+
+         (ctx.drawImage (list-ref eggs i) x 250)
+
+         (fill-centre-text ctx (+ "" (car (car anc)) " " (list-ref (car anc) 2)) x 200)
+         (fill-centre-text ctx (+ "" (time-to-seconds (list-ref (car anc) 3))) x 500)
+
+         ;;(index-for-each
+         ;; (lambda (i child)
+         ;;   (fill-centre-text ctx (+ "" (car child) " " (list-ref child 2)) x (+ 400 (* i 20))))
+         ;; (cadr anc))
+         ))
+     ancestors))
+
+  (set! ctx.fillStyle "#fff"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (egglab-data time eggs offset land images username replicate player-time)
+  (list time eggs offset land images username replicate player-time tooltip player-id))
+
+(define (egglab-data-init land)
+  (list 0 () (list 0 0) land () "???" 0 0 "" 0))
+
+(define (egglab-data-init-land d land)
+  (egglab-data-modify-images
+   (egglab-data-modify-land d land) ()))
+
+(define (egglab-data-start-game d player-id time eggs offset replicate)
+  (list time eggs offset
+        (list-ref d 3)
+        (list-ref d 4)
+        (list-ref d 5)
+        replicate 0
+        (list-ref d 8)
+        player-id))
+
+(define (egglab-data-time d) (list-ref d 0))
+(define (egglab-data-modify-time d v) (list-replace d 0 v))
+(define (egglab-data-eggs d) (list-ref d 1))
+(define (egglab-data-modify-eggs d v) (list-replace d 1 v))
+(define (egglab-data-offset d) (list-ref d 2))
+(define (egglab-data-modify-offset d v) (list-replace d 2 v))
+(define (egglab-data-land d) (list-ref d 3))
+(define (egglab-data-modify-land d v) (list-replace d 3 v))
+(define (egglab-data-images d) (list-ref d 4))
+(define (egglab-data-modify-images d v) (list-replace d 4 v))
+(define (egglab-data-username d) (list-ref d 5))
+(define (egglab-data-modify-username d v) (list-replace d 5 v))
+(define (egglab-data-replicate d) (list-ref d 6))
+(define (egglab-data-modify-replicate d v) (list-replace d 6 v))
+(define (egglab-data-player-time d) (list-ref d 7))
+(define (egglab-data-modify-player-time d v) (list-replace d 7 v))
+(define (egglab-data-tooltip d) (list-ref d 8))
+(define (egglab-data-modify-tooltip d v) (list-replace d 8 v))
+(define (egglab-data-player-id d) (list-ref d 9))
+(define (egglab-data-modify-player-id d v) (list-replace d 9 v))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (nightjar-intro c)
+  (let ((icon-x 150)
+        (icon-y 520))
+    (game-modify-render
+     (lambda (ctx)
+       (ctx.drawImage (find-image "eggs.jpg") 0 0)
+       (set! ctx.font "normal 70pt 'Press Start 2P'")
+       (robo-nightjar-says ctx 22 "Search for my artificial eggs and help ecology and evolution research!" 1)
+       (set! ctx.font "normal 40pt 'Press Start 2P'")
+       (wrap-text ctx "Easter Robot Nightjar says:" 0 160 1000 50)
+       (set! ctx.font "normal 15pt 'Press Start 2P'")
+       (set! ctx.globalAlpha 0.8)
+       (set! ctx.fillStyle "#ffffff")
+       (ctx.fillRect 0 (+ icon-y 140) 1500 100)
+       (set! ctx.globalAlpha 1))
+   (game-modify-buttons
+    (list
+     (image-button
+      ""
+      800 430
+      "rotate" (find-image "yes.png")
+      (lambda (c)
+        (nightjar-menu
+         (game-modify-over-nothing-hook
+          (lambda (c)
+            (game-modify-data
+             (lambda (d)
+               (egglab-data-modify-tooltip d ""))
+             c))
+          (game-modify-data
+           (lambda (d)
+             (msg "init egglab data")
+             (egglab-data-init "none yet.."))
+           c)))))
+
+
+      (image-button
+       "" (+ icon-x 0) (+ icon-y 190) #f (find-image "sensory-ecology.png")
+       (lambda (c)
+         (set! window.location "http://www.sensoryecology.com/")
+         c))
+
+      (image-button
+       "" (+ icon-x 130) (+ icon-y 190) #f (find-image "cuckoos.png")
+       (lambda (c)
+         (set! window.location "http://www2.zoo.cam.ac.uk/africancuckoos/home.html")
+         c))
+
+      (image-button
+       "" (+ icon-x 290) (+ icon-y 200) #f (find-image "exeter.png")
+       (lambda (c)
+         (set! window.location "http://www.exeter.ac.uk/")
+         c))
+
+      (image-button
+       "" (+ icon-x 470) (+ icon-y 190) #f (find-image "cu.png")
+       (lambda (c)
+         (set! window.location "http://www.zoo.cam.ac.uk/")
+         c))
+
+      (image-button
+       "" (+ icon-x 690) (+ icon-y 190) #f (find-image "bbsrc.png")
+       (lambda (c)
+         (set! window.location "http://www.bbsrc.ac.uk/")
+         c))
+
+      (image-button
+       "" (+ icon-x 900) (+ icon-y 190) #f (find-image "foam.png")
+       (lambda (c)
+         (set! window.location "http://fo.am")
+         c))
+
+     )
+    c))))
+
+(define (bg-full-path fn)
+  (string-append "/bg/" fn))
+
+(define (async-load-images c path l)
+  (for-each
+   (lambda (i)
+     (let ((fullpath (bg-full-path i)))
+       (load-image-mutate
+        (lambda (c)
+          (game-modify-data
+           (lambda (d)
+             (egglab-data-modify-images
+              d (append (egglab-data-images d) (list fullpath))))
+           c))
+        fullpath)))
+   (shuffle l)))
+
+;; just to get them in the cache
+(define (async-load-images-null c path l)
+  (for-each
+   (lambda (i)
+     (let ((fullpath (bg-full-path i)))
+       (load-image-mutate
+        (lambda (c)
+          (msg (+ "loaded " fullpath))
+          c)
+        fullpath)))
+   (shuffle l)))
+
+(define (nightjar-menu c)
+  ;; kick off the loading here
+  (async-load-images-null c "MV" (append cf_images cp_images))
+
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (wrap-text ctx "Main menu" 0 100 1000 1000)
+     (set! ctx.font "normal 20pt 'Press Start 2P'")
+     (set! ctx.fillStyle "#000")
+     (robo-nightjar-bot-right ctx 22 (text-or-tooltip c "Welcome to egglab! We need your help for our camouflage research!")))
+
+   (game-modify-buttons
+    (list
+
+     (egglab-button
+      "Play the main game" 600 250 (find-image "bigbutton-1.png")
+      "Try and find new eggs. Their camouflage changes as people play."
+      (lambda (c)
+        (nightjar-choose-location c)))
+
+     (egglab-button
+      "Challenge your friends" 600 450 (find-image "bigbutton-2.png")
+      "Make an Easter egg hunts for your friends to play."
+      (lambda (c)
+        (set! window.location "egghunt.html")
+        c))
+
+    (image-button
+     "Browser check" 500 700 "jumpy" (find-image "button.png")
+     (lambda (c)
+       (nightjar-browser-test
+         c
+         (list
+           (egg-drawable
+            (list "op" "destination-over" (list "op" "destination-over" (list "op" "destination-over" (list "op" "destination-over" (list "op" "xor" (list "op" "source-atop" (list "terminal" "varying-image" (list 28 13 3.2739866963624955 1) "white-s32-t94.png") (list "terminal" "colour" (list 55 28 157 0.8703617921564728))) (list "terminal" "colour" (list 118 86 251 0.910967790754512))) (list "terminal" "colour" (list 115 35 119 0.5835876541677862))) (list "terminal" "varying-image" (list 27 122 1.9632763059376739 1) "black-s64-t160.png")) (list "op" "source-atop" (list "op" "lighter" (list "terminal" "colour" (list 144 172 77 0.6578607836272568)) (list "terminal" "varying-image" (list 46 86 2.8194386498727835 1) "white-s64-t94.png")) (list "terminal" "colour" (list 167 117 61 0.90661082835868)))) (list "op" "source-over" (list "op" "xor" (list "op" "xor" (list "op" "lighter" (list "op" "xor" (list "terminal" "colour" (list 135 86 127 0.4911911382805556)) (list "terminal" "varying-image" (list 25 44 4.793568064447492 1) "white-s32-t160.png")) (list "op" "lighter" (list "terminal" "constant-image" (list 107 11 0.28197273300820963 1) "themes/huge/2.png") (list "terminal" "colour" (list 189 187 227 0.9408519568387419)))) (list "op" "xor" (list "op" "source-over" (list "terminal" "constant-image" (list 106 19 3.680530600845348 1) "themes/huge/3.png") (list "terminal" "colour" (list 248 7 129 0.23395235161297023))) (list "terminal" "colour" (list 209 113 129 0.9456627382896841)))) (list "op" "source-atop" (list "op" "xor" (list "op" "lighter" (list "terminal" "colour" (list 65 73 9 0.11518095340579748)) (list "terminal" "constant-image" (list 22 98 2.9823036272311585 1) "themes/huge/1.png")) (list "op" "destination-over" (list "terminal" "varying-image" (list 8 117 1.6466068954258226 1) "black-s8.png") (list "terminal" "colour" (list 195 238 4 0.14038369432091713)))) (list "op" "source-atop" (list "op" "lighter" (list "terminal" "colour" (list 100 141 79 0.46338203409686685)) (list "terminal" "colour" (list 142 124 220 0.8470430481247604))) (list "op" "source-over" (list "terminal" "colour" (list 132 77 32 0.3010143404826522)) (list "terminal" "colour" (list 13 250 253 0.11273922072723508)))))) (list "op" "source-atop" (list "op" "destination-over" (list "op" "source-over" (list "op" "source-over" (list "terminal" "varying-image" (list 15 60 1.4502151114479638 1) "black-s32-t94.png") (list "terminal" "colour" (list 219 2 212 0.9857645118609071))) (list "terminal" "colour" (list 93 205 54 0.6608885279856622))) (list "op" "xor" (list "op" "lighter" (list "terminal" "colour" (list 40 255 215 0.8694649131502956)) (list "terminal" "colour" (list 190 42 242 0.8041096965316683))) (list "op" "lighter" (list "terminal" "colour" (list 250 207 66 0.11774504813365638)) (list "terminal" "colour" (list 172 243 253 0.7434877760242671))))) (list "op" "destination-over" (list "op" "source-over" (list "terminal" "constant-image" (list 31 118 0.34600835539586844 1) "themes/huge/7.png") (list "op" "xor" (list "terminal" "colour" (list 11 136 193 0.7133486801758409)) (list "terminal" "constant-image" (list 56 83 5.519698559149169 1) "themes/huge/3.png"))) (list "op" "source-over" (list "op" "xor" (list "terminal" "colour" (list 167 89 136 0.9118920972105116)) (list "terminal" "colour" (list 17 148 46 0.6642281892709434))) (list "terminal" "constant-image" (list 83 68 2.780523863194976 1) "themes/huge/1.png"))))))
+            #f #t)
+           (egg-drawable
+            (list "op" "destination-over" (list "op" "xor" (list "op" "destination-over" (list "op" "xor" (list "op" "source-over" (list "op" "destination-over" (list "terminal" "constant-image" (list 93 14 0.7768339076070115 1) "themes/huge/6.png") (list "terminal" "varying-image" (list 23 14 4.409712414161302 1) "white-s64.png")) (list "op" "lighter" (list "terminal" "colour" (list 223 170 104 0.24341767560690641)) (list "terminal" "colour" (list 105 11 233 0.4464006912894547)))) (list "op" "source-over" (list "op" "source-atop" (list "terminal" "colour" (list 241 80 87 0.62650335743092)) (list "terminal" "constant-image" (list 56 92 5.728292080915533 1) "themes/huge/8.png")) (list "op" "xor" (list "terminal" "constant-image" (list 44 9 2.6834987869570033 1) "themes/huge/6.png") (list "terminal" "colour" (list 162 107 18 0.02287440304644406))))) (list "op" "source-atop" (list "op" "destination-over" (list "op" "xor" (list "terminal" "colour" (list 135 54 51 0.6036044149659574)) (list "terminal" "colour" (list 255 36 44 0.6338184340856969))) (list "op" "source-over" (list "terminal" "colour" (list 224 202 91 0.9362531783990562)) (list "terminal" "constant-image" (list 94 59 3.4917845970955677 1) "themes/huge/5.png"))) (list "op" "source-over" (list "op" "xor" (list "terminal" "colour" (list 42 158 2 0.7966847247444093)) (list "terminal" "colour" (list 237 89 114 0.7782308124005795))) (list "op" "destination-over" (list "terminal" "varying-image" (list 125 51 1.7824165334645659 1) "black-s8-t160.png") (list "terminal" "colour" (list 204 128 246 0.5585482337046415)))))) (list "op" "source-atop" (list "terminal" "colour" (list 178 233 195 0.8368935994803905)) (list "terminal" "colour" (list 88 81 30 0.7772741138469428)))) (list "op" "lighter" (list "op" "xor" (list "op" "xor" (list "op" "source-over" (list "op" "lighter" (list "terminal" "colour" (list 14 191 228 0.327065487857908)) (list "terminal" "colour" (list 0 117 106 0.1958908815868199))) (list "op" "destination-over" (list "terminal" "constant-image" (list 19 86 4.805766109064687 1) "themes/huge/5.png") (list "terminal" "varying-image" (list 35 20 3.1297883553667925 1) "white-s16-t94.png"))) (list "op" "xor" (list "op" "destination-over" (list "terminal" "colour" (list 220 26 173 0.19008610886521637)) (list "terminal" "colour" (list 91 235 53 0.14606734784319997))) (list "op" "xor" (list "terminal" "constant-image" (list 80 21 5.8576460657408465 1) "themes/huge/1.png") (list "terminal" "constant-image" (list 26 57 2.2727518589906395 1) "themes/huge/5.png")))) (list "op" "xor" (list "op" "destination-over" (list "op" "lighter" (list "terminal" "constant-image" (list 93 4 6.257198647742159 1) "themes/huge/1.png") (list "terminal" "constant-image" (list 98 10 1.3173266110257245 1) "themes/huge/4.png")) (list "terminal" "constant-image" (list 35 47 5.123617461645976 1) "themes/huge/2.png")) (list "op" "lighter" (list "op" "source-atop" (list "terminal" "constant-image" (list 65 64 0.13099828269006686 1) "themes/huge/1.png") (list "terminal" "constant-image" (list 72 86 4.805740773178171 1) "themes/huge/7.png")) (list "terminal" "colour" (list 119 238 79 0.7350334525108337))))) (list "op" "source-over" (list "op" "destination-over" (list "op" "source-atop" (list "op" "source-atop" (list "terminal" "constant-image" (list 51 21 5.1431183203202675 1) "themes/huge/2.png") (list "terminal" "constant-image" (list 107 49 3.8560518729798496 1) "themes/huge/8.png")) (list "op" "lighter" (list "terminal" "colour" (list 59 191 180 0.981713202316314)) (list "terminal" "constant-image" (list 19 74 5.575763939023018 1) "themes/huge/2.png"))) (list "op" "destination-over" (list "op" "destination-over" (list "terminal" "constant-image" (list 39 114 2.0770555496318264 1) "themes/huge/3.png") (list "terminal" "colour" (list 11 24 18 0.3138679803814739))) (list "op" "source-atop" (list "terminal" "colour" (list 135 224 58 0.8056498966179788)) (list "terminal" "colour" (list 127 214 30 0.26338237966410816))))) (list "op" "source-over" (list "op" "source-over" (list "op" "lighter" (list "terminal" "colour" (list 59 88 205 0.7406738304998726)) (list "terminal" "colour" (list 21 210 43 0.25459089362993836))) (list "op" "destination-over" (list "terminal" "varying-image" (list 102 102 1.1106744146319105 1) "white-s8-t160.png") (list "terminal" "colour" (list 214 162 132 0.5170850085560232)))) (list "op" "source-atop" (list "op" "destination-over" (list "terminal" "colour" (list 166 243 28 0.7843350195325911)) (list "terminal" "varying-image" (list 92 63 5.422653036637231 1) "white-s64.png")) (list "op" "source-atop" (list "terminal" "colour" (list 193 12 249 0.19117056392133236)) (list "terminal" "varying-image" (list 36 4 1.1696042035482823 1) "black-s8-t94.png")))))))
+            #f #t)
+           (egg-drawable
+            (list "op" "lighter" (list "op" "xor" (list "op" "destination-over" (list "op" "source-atop" (list "op" "source-atop" (list "op" "xor" (list "terminal" "varying-image" (list 23 21 2.699912258262746 1) "black-s64-t94.png") (list "terminal" "varying-image" (list 83 98 2.8463397023901345 1) "white-s64-t94.png")) (list "op" "destination-over" (list "terminal" "varying-image" (list 115 85 1.9439046395150945 1) "white-s16.png") (list "terminal" "varying-image" (list 53 45 5.231206632829271 1) "white-s16-t160.png"))) (list "op" "destination-over" (list "op" "source-atop" (list "terminal" "colour" (list 13 172 133 0.484733700286597)) (list "terminal" "colour" (list 87 193 14 0.07065510004758835))) (list "op" "source-atop" (list "terminal" "constant-image" (list 61 58 1.4320630398904906 1) "themes/huge/5.png") (list "terminal" "constant-image" (list 52 105 0.9887309104115702 1) "themes/huge/4.png")))) (list "op" "lighter" (list "op" "destination-over" (list "op" "source-atop" (list "terminal" "colour" (list 248 64 98 0.6288095712661743)) (list "terminal" "varying-image" (list 90 52 1.8103149835718795 1) "black-s16-t94.png")) (list "terminal" "constant-image" (list 55 41 0.5296724676629528 1) "themes/huge/1.png")) (list "op" "source-atop" (list "op" "source-atop" (list "terminal" "colour" (list 190 46 41 0.6083550138864666)) (list "terminal" "colour" (list 116 42 233 0.35647614882327616))) (list "op" "lighter" (list "terminal" "constant-image" (list 89 120 0.39258975617587566 1) "themes/huge/7.png") (list "terminal" "colour" (list 193 188 222 0.12810118310153484)))))) (list "op" "xor" (list "op" "destination-over" (list "op" "xor" (list "op" "lighter" (list "terminal" "colour" (list 185 96 155 0.5319427629001439)) (list "terminal" "colour" (list 150 136 110 0.058547641383484006))) (list "op" "source-over" (list "terminal" "colour" (list 86 249 57 0.7702281903475523)) (list "terminal" "constant-image" (list 109 49 4.555632978205104 1) "themes/huge/7.png"))) (list "op" "destination-over" (list "op" "source-atop" (list "terminal" "colour" (list 249 3 203 0.08698589028790593)) (list "terminal" "colour" (list 83 222 124 0.40039796754717827))) (list "op" "lighter" (list "terminal" "constant-image" (list 79 41 5.635120288494509 1) "themes/huge/3.png") (list "terminal" "colour" (list 124 172 140 0.5334489275701344))))) (list "terminal" "constant-image" (list 30 49 0.06380805721599608 1) "themes/huge/4.png"))) (list "op" "xor" (list "op" "lighter" (list "op" "source-atop" (list "op" "source-over" (list "op" "destination-over" (list "terminal" "colour" (list 243 159 61 0.0031860475428402424)) (list "terminal" "colour" (list 128 51 179 0.5545554654672742))) (list "op" "destination-over" (list "terminal" "colour" (list 221 195 7 0.9081218643113971)) (list "terminal" "varying-image" (list 41 15 0.2599525522934273 1) "white-s16-t160.png"))) (list "terminal" "colour" (list 62 148 109 0.25347747979685664))) (list "op" "lighter" (list "op" "destination-over" (list "op" "destination-over" (list "terminal" "constant-image" (list 111 90 4.052207548493519 1) "themes/huge/7.png") (list "terminal" "varying-image" (list 102 116 1.2157214114544914 1) "black-s64-t160.png")) (list "op" "source-atop" (list "terminal" "constant-image" (list 90 64 5.518592142067384 1) "themes/huge/3.png") (list "terminal" "varying-image" (list 42 109 4.500905730100349 1) "white-s16.png"))) (list "terminal" "colour" (list 222 131 218 0.15156375337392092)))) (list "op" "xor" (list "terminal" "constant-image" (list 84 79 5.406734956361354 1) "themes/huge/2.png") (list "terminal" "constant-image" (list 89 106 6.142104450768326 1) "themes/huge/3.png"))))
+            #f #t)
+           (egg-drawable
+            (list "op" "source-atop" (list "op" "lighter" (list "op" "destination-over" (list "terminal" "varying-image" (list 102 101 4.4200357114118525 1) "black-s16-t160.png") (list "op" "lighter" (list "op" "xor" (list "terminal" "constant-image" (list 25 13 3.904700188896619 1) "themes/huge/2.png") (list "op" "xor" (list "terminal" "constant-image" (list 58 125 6.041546501480509 1) "themes/huge/5.png") (list "terminal" "colour" (list 134 107 244 0.9441638826392591)))) (list "op" "xor" (list "op" "source-atop" (list "terminal" "constant-image" (list 17 84 1.72235100441752 1) "themes/huge/4.png") (list "terminal" "colour" (list 51 249 192 0.5698356309439987))) (list "terminal" "colour" (list 131 181 195 0.6758348126895726))))) (list "op" "destination-over" (list "terminal" "varying-image" (list 66 33 2.4679795202678068 1) "black-s32-t160.png") (list "op" "lighter" (list "op" "destination-over" (list "op" "destination-over" (list "terminal" "colour" (list 165 62 92 0.3835061981808394)) (list "terminal" "varying-image" (list 22 21 2.3109369817902334 1) "black-s16.png")) (list "op" "source-atop" (list "terminal" "constant-image" (list 75 125 3.1159060227870943 1) "themes/huge/8.png") (list "terminal" "colour" (list 228 0 255 0.3015594589523971)))) (list "op" "source-over" (list "op" "lighter" (list "terminal" "colour" (list 46 217 107 0.7898308904841542)) (list "terminal" "colour" (list 185 25 92 0.1364137688651681))) (list "terminal" "colour" (list 86 198 85 0.629379362333566)))))) (list "op" "destination-over" (list "op" "lighter" (list "terminal" "colour" (list 170 132 193 0.4517463643569499)) (list "terminal" "colour" (list 130 139 117 0.25632687797769904))) (list "op" "source-atop" (list "op" "xor" (list "op" "xor" (list "terminal" "colour" (list 221 217 46 0.21676060766912997)) (list "op" "xor" (list "terminal" "constant-image" (list 114 55 5.199511391993612 1) "themes/huge/3.png") (list "terminal" "varying-image" (list 76 34 0.8197396273501217 1) "black-s64-t94.png"))) (list "op" "destination-over" (list "terminal" "colour" (list 39 183 46 0.06466573989018798)) (list "op" "destination-over" (list "terminal" "constant-image" (list 120 3 1.693498762469273 1) "themes/huge/8.png") (list "terminal" "constant-image" (list 15 80 2.5159992379504255 1) "themes/huge/1.png")))) (list "op" "xor" (list "terminal" "colour" (list 61 175 180 0.3262835599016398)) (list "op" "source-atop" (list "op" "destination-over" (list "terminal" "constant-image" (list 29 72 4.4429805027949625 1) "themes/huge/7.png") (list "terminal" "colour" (list 96 9 146 0.21449804888106883))) (list "op" "destination-over" (list "terminal" "constant-image" (list 34 106 3.1176813412061892 1) "themes/huge/5.png") (list "terminal" "colour" (list 237 184 177 0.40582278929650784))))))))
+            #f #t)
+           (egg-drawable
+            (list "op" "source-over" (list "op" "source-atop" (list "op" "lighter" (list "op" "source-atop" (list "terminal" "varying-image" (list 19 96 4.90786541692866 1) "white-s16-t94.png") (list "op" "source-over" (list "op" "source-atop" (list "terminal" "varying-image" (list 13 29 4.323387821319513 1) "black-s32.png") (list "terminal" "varying-image" (list 96 125 5.572854882830288 1) "black-s64-t94.png")) (list "op" "destination-over" (list "terminal" "colour" (list 190 106 75 0.0026503177359700203)) (list "terminal" "constant-image" (list 96 118 0.8829496189858764 1) "themes/huge/3.png")))) (list "terminal" "constant-image" (list 56 70 3.774096392482985 1) "themes/huge/4.png")) (list "op" "destination-over" (list "op" "xor" (list "terminal" "colour" (list 32 208 225 0.4687961039599031)) (list "op" "lighter" (list "terminal" "constant-image" (list 120 46 3.673237756156828 1) "themes/huge/3.png") (list "op" "destination-over" (list "terminal" "constant-image" (list 76 78 4.855753260281403 1) "themes/huge/2.png") (list "terminal" "colour" (list 26 97 186 0.08064342080615461))))) (list "op" "destination-over" (list "terminal" "varying-image" (list 33 11 4.196356338100042 1) "black-s16-t94.png") (list "op" "source-over" (list "op" "source-over" (list "terminal" "colour" (list 225 160 109 0.45700589660555124)) (list "terminal" "constant-image" (list 62 31 3.3544630083627998 1) "themes/huge/6.png")) (list "op" "source-over" (list "terminal" "constant-image" (list 21 43 2.0972477904525584 1) "themes/huge/8.png") (list "terminal" "varying-image" (list 17 38 4.633508964119945 1) "black-s64-t160.png")))))) (list "op" "source-atop" (list "op" "destination-over" (list "op" "xor" (list "terminal" "varying-image" (list 64 125 3.5522099478011953 1) "black-s16-t94.png") (list "terminal" "varying-image" (list 17 58 4.823655060083605 1) "white-s16-t160.png")) (list "op" "lighter" (list "op" "lighter" (list "op" "xor" (list "terminal" "colour" (list 209 203 243 0.7533332952298224)) (list "terminal" "varying-image" (list 10 19 6.095064562881365 1) "black-s64-t160.png")) (list "op" "source-atop" (list "terminal" "colour" (list 114 104 177 0.9378137674648315)) (list "terminal" "constant-image" (list 29 77 4.0423863499495205 1) "themes/huge/2.png"))) (list "op" "destination-over" (list "op" "lighter" (list "terminal" "colour" (list 141 219 164 0.7755052233114839)) (list "terminal" "constant-image" (list 22 98 2.48491827315744 1) "themes/huge/3.png")) (list "op" "lighter" (list "terminal" "constant-image" (list 82 104 2.721005482231267 1) "themes/huge/4.png") (list "terminal" "colour" (list 121 249 215 0.7727555297315121)))))) (list "op" "source-atop" (list "op" "xor" (list "op" "source-over" (list "op" "source-over" (list "terminal" "colour" (list 49 15 224 0.002406015060842037)) (list "terminal" "constant-image" (list 71 18 0.40954947311477735 1) "themes/huge/6.png")) (list "op" "xor" (list "terminal" "constant-image" (list 120 31 1.2368566498174332 1) "themes/huge/6.png") (list "terminal" "varying-image" (list 104 74 3.430667694577016 1) "black-s16.png"))) (list "terminal" "colour" (list 101 203 221 0.8350488368887454))) (list "op" "xor" (list "terminal" "colour" (list 177 136 99 0.6388995668385178)) (list "terminal" "colour" (list 159 182 36 0.9357330144848675))))))
+            #f #t)
+           )
+           )))
+
+    (image-button
+     "Website" 150 700 "jumpy" (find-image "button.png")
+     (lambda (c)
+       (set! window.location "http://nightjar.exeter.ac.uk")
+       c))
+
+
+     )
+    c)))
+
+
+
+
+(define (nightjar-browser-test c eggs)
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (ctx.fillText "Browser check" 20 50)
+     (ctx.drawImage (find-image "browser-check.png") 400 200)
+     (set! ctx.fillStyle "#000")
+     (ctx.fillRect 400 380 530 160)
+     (index-for-each
+      (lambda (i egg)
+        (ctx.drawImage egg (+ 400 (* i 100)) 400))
+      eggs)
+
+     (robo-nightjar-says-bottom
+      ctx 18
+      (string-append "The top and bottom eggs should look the same. If not, please use a different browser e.g. Chrome.")))
+   (game-modify-buttons
+    (list
+     (image-button
+      "Back" 1150 720 "jumpy" (find-image "button.png")
+      (lambda (c)
+        (nightjar-menu c)))
+
+     )
+    c)))
+
+
+
+;;(robo-nightjar-says-bottom ctx 20 "Choose which species' nest sites you want to try - I have different eggs for each.")
+
+(define (nightjar-choose-location c)
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (wrap-text ctx "Discover new patterns" 0 100 1000 1000)
+     (robo-nightjar-says-bottom
+      ctx 20 (text-or-tooltip c "Choose a species eggs you want to find - I have different eggs for each."))
+     (set! ctx.font "normal 20pt 'Press Start 2P'")
+     (ctx.drawImage (find-image "cf.png") 0 120)
+     (ctx.drawImage (find-image "mv.png") 405 120)
+     (ctx.drawImage (find-image "cp.png") 830 120)
+     (set! ctx.fillStyle "#000")
+     )
+
+   (game-modify-buttons
+    (list
+
+    (image-button
+     "Sound" 1020 700 "jumpy"
+     (if (zero? (game-mute c))
+         (find-image "mute-off.png")
+         (find-image "mute-on.png"))
+     (lambda (c)
+       (game-modify-buttons
+        (cons
+         (button-modify-drawable
+          (car (game-buttons c))
+          (if (zero? (game-mute c))
+              (find-image "mute-on.png")
+              (find-image "mute-off.png")))
+         (cdr (game-buttons c)))
+        (game-flip-mute c))))
+
+    (image-button
+     "Back" 1170 700 "jumpy" (find-image "button.png")
+     (lambda (c) (nightjar-menu c)))
+
+
+    (image-button
+     "More..." 870 700 "jumpy" (find-image "button.png")
+     (lambda (c)
+       (nightjar-env c)))
+
+    (egglab-button
+     "Mozambique nightjar" 200 500 (find-image "play-button.png")
+     "This nightjar likes to lay it's eggs in open areas."
+      (lambda (c)
+        (async-load-images c "CF" cf_images)
+        (nightjar-research
+         "flicker"
+         (game-modify-data
+          (lambda (d) (egglab-data-init-land d "CF"))
+          c))))
+
+    (egglab-button
+     "Pennant-winged nightjar" 605 500
+     (find-image "play-button.png")
+     "This nightjar is not fussy and likes to nest anywhere."
+     (lambda (c)
+       (async-load-images c "MV" (append cf_images cp_images))
+       (nightjar-research
+        "flicker"
+        (game-modify-data
+         (lambda (d) (egglab-data-init-land d "MV"))
+         c))))
+
+    (egglab-button
+     "Fiery-necked nightjar" 1030 500
+     (find-image "play-button.png")
+     "This nightjar likes nesting in leaf litter."
+     (lambda (c)
+       (async-load-images c "CP" cp_images)
+       (nightjar-research
+        "flicker"
+        (game-modify-data
+         (lambda (d) (egglab-data-init-land d "CP"))
+         c)))))
+
+    c)))
+
+(define (nightjar-about c)
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (wrap-text ctx "About" 0 50 1000 1000)
+     (set! ctx.font "normal 15pt 'Press Start 2P'")
+     (wrap-text ctx "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum." 0 100 1000 40))
+
+   (game-modify-buttons
+    (list
+    (image-button
+     "Back" 1150 720 "jumpy" (find-image "button.png")
+     (lambda (c) (nightjar-choose-location c))))
+    c)))
+
+
+(define (nightjar-env c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text
+       ctx (string-append "Egg pattern information") 0 100 1000 60)
+      (set! ctx.font "normal 15pt 'Press Start 2P'")
+      (robo-nightjar-bot-left ctx 20 (text-or-tooltip c "Here you can get information on how my egg patterns are progressing."))
+      (set! ctx.fillStyle "#000")
+      )
+
+    (game-modify-buttons
+     (list
+
+      (egglab-button
+       "High Scores" 600 200 (find-image "bigbutton-1.png")
+       "See if you are on the high scores list."
+       (lambda (c)
+         (server-call-mutate
+          "hiscores"
+          (list
+           (list "count" 20))
+          (lambda (c data)
+            (nightjar-hiscores (JSON.parse data) c)))
+         c))
+
+      (egglab-button
+       "Most successful eggs" 600 400 (find-image "bigbutton-2.png")
+       "See my most successful eggs for each species."
+       (lambda (c)
+         (let ((replicate (random num-replicates)))
+           (server-call-mutate
+            "top-eggs"
+            (list
+             (list "replicate" replicate)
+             (list "count" num-best-eggs))
+            (lambda (c data)
+              (let ((data (JSON.parse data)))
+                (nightjar-best
+                 (game-modify-data
+                  (lambda (d)
+                    (egglab-data-start-game
+                     d (egglab-data-player-id d) 0
+                     (make-best-population
+                      c (map
+                         (lambda (d)
+                           ;; individually parse the egg's code
+                           (cons (JSON.parse (car d)) (cdr d)))
+                         (list-ref data 0))
+                      (map
+                       (lambda (d)
+                         ;; individually parse the egg's code
+                         (cons (JSON.parse (car d)) (cdr d)))
+                       (list-ref data 1))
+                      (map
+                       (lambda (d)
+                         ;; individually parse the egg's code
+                         (cons (JSON.parse (car d)) (cdr d)))
+                       (list-ref data 2)))
+                     (list 0 0) 0))
+                  c) replicate)))))
+         (nightjar-generating-best-eggs c)))
+
+      (egglab-button
+       "Egg difficulty graph" 600 600 (find-image "bigbutton-1.png")
+       "This shows how my eggs are becoming more difficult to spot."
+        (lambda (c)
+          (server-call-mutate
+           "get-stats"
+           (list)
+           (lambda (c data)
+             (nightjar-fit-graph (JSON.parse data) c)))
+          c))
+
+
+      (image-button
+       "Play again!" 1100 720 "jumpy" (find-image "button.png")
+       (lambda (c) (nightjar-choose-location c))))
+     c))))
+
+(define (nightjar-generating-best-eggs c)
+  (game-modify-update
+   (lambda (t c)
+     c)
+   (game-modify-render
+    (lambda (ctx)
+      (robo-nightjar-says ctx 20 "Please wait while I calculate the best eggs from one of my populations for you..."))
+    (game-modify-buttons (list) c))))
+
+
+(define (nightjar-hiscores table c)
+  (game-modify-update
+   (lambda (t c ) c)
+   (game-modify-render
+    (lambda (ctx)
+      (robo-nightjar-bot-left ctx 17 "These are my quickest clicking players. The number in brackets is the generation of eggs.")
+      (set! ctx.fillStyle "#fff")
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx (string-append "High Scores") 120 100 1000 70)
+      (set! ctx.font "normal 20pt 'Press Start 2P'")
+      (wrap-text ctx "Mozambique" -180 150 400 70)
+      (wrap-text ctx "Pennant-winged" 120 150 400 70)
+      (wrap-text ctx "Fiery-necked" 420 150 400 70)
+
+      (index-for-each
+       (lambda (i e)
+         (let ((txt (string-append (car e) " : " (time-to-seconds (cadr e)) " (" (list-ref e 2) ")")))
+           (set! ctx.fillStyle "#fff")
+           (if (eq? i 0)
+               (text-flashy-render ctx txt 370 (+ 200 (* 30 i)) (game-time c))
+               (ctx.fillText txt 370 (+ 200 (* 30 i))))))
+       (list-ref table 0))
+
+      (index-for-each
+       (lambda (i e)
+         (let ((txt (string-append (car e) " : " (time-to-seconds (cadr e)) " (" (list-ref e 2) ")")))
+           (set! ctx.fillStyle "#fff")
+           (if (eq? i 0)
+               (text-flashy-render ctx txt 650 (+ 200 (* 30 i)) (game-time c))
+               (ctx.fillText txt 650 (+ 200 (* 30 i))))))
+       (list-ref table 1))
+
+      (index-for-each
+       (lambda (i e)
+         (let ((txt (string-append (car e) " : " (time-to-seconds (cadr e)) " (" (list-ref e 2) ")")))
+           (set! ctx.fillStyle "#fff")
+           (if (eq? i 0)
+               (text-flashy-render ctx txt 950 (+ 200 (* 30 i)) (game-time c))
+               (ctx.fillText txt 950 (+ 200 (* 30 i))))))
+       (list-ref table 2)))
+
+    (game-modify-buttons
+     (list
+      (image-button
+       "Back" 1150 720 "jumpy" (find-image "button.png")
+       (lambda (c) (nightjar-env c))))
+     c))))
+
+(define (min-max l)
+  (foldl
+   (lambda (i r)
+     (list
+      (if (< i (car r)) i (car r))
+      (if (> i (cadr r)) i (cadr r))))
+   (list 9999999 0)
+   l))
+
+(define (meta-min-max-inner ll r)
+  (foldl
+   (lambda (i r)
+     (list
+      (if (< i (car r)) i (car r))
+      (if (> i (cadr r)) i (cadr r))))
+   r ll))
+
+(define (meta-min-max l)
+  (foldl
+   (lambda (ll r)
+     (meta-min-max-inner ll r))
+   (list 9999999 0)
+   l))
+
+(define (longest l)
+  (foldl
+   (lambda (i r)
+     (if (> (length i) r) (length i) r))
+   0
+   l))
+
+(define (draw-graph ctx col table x y w h x-per-sample mm)
+;;  (msg table)
+  (set! ctx.strokeStyle "#fff")
+  (ctx.strokeRect x y w h)
+  (set! ctx.strokeStyle col)
+  (when (not (null? table))
+        (ctx.beginPath)
+        (ctx.moveTo x (+ y h))
+        (set! ctx.lineWidth 3)
+        (index-for-each
+         (lambda (i s)
+           (ctx.lineTo (+ x (* i x-per-sample))
+                       (+ h (- y (* h (/ (- s (car mm)) (- (cadr mm) (car mm))))))))
+         table)
+        (ctx.stroke)
+        (set! ctx.lineWidth 1)
+        ))
+
+(define (draw-fitness-graph ctx table x y w h)
+  (let ((table (list (map (lambda (i) (cadr i)) (list-ref table 0))
+                     (map (lambda (i) (cadr i)) (list-ref table 1))
+                     (map (lambda (i) (cadr i)) (list-ref table 2)))))
+    (let ((x-per-sample (/ w (- (longest table) 1)))
+          (mm (meta-min-max table)))
+      (draw-graph ctx "#f77" (list-ref table 0) x y w h x-per-sample mm)
+      (draw-graph ctx "#7f7" (list-ref table 1) x y w h x-per-sample mm)
+      (draw-graph ctx "#77f" (list-ref table 2) x y w h x-per-sample mm)
+
+  (ctx.save)
+  (ctx.translate (+ x 10) (+ y -170 (/ h 2)))
+  (ctx.rotate (/ Math.PI 2))
+  (ctx.fillText "Average time in seconds" 0 0)
+  (ctx.restore)
+
+  (set! ctx.fillStyle "#f77")
+  (ctx.fillText "Mozambique nightjar" (+ x 50) (+ y 40))
+  (set! ctx.fillStyle "#7f7")
+  (ctx.fillText "Pennant-winged nightjar" (+ x 50) (+ y 80))
+  (set! ctx.fillStyle "#77f")
+  (ctx.fillText "Fiery-necked nightjar" (+ x 50) (+ y 120))
+
+  (set! ctx.fillStyle "#fff")
+  (ctx.fillText "Generations" (+ x h -100) (+ 25 y (/ w 2)))
+  (ctx.fillText "0" x (+ 20 y h))
+  (ctx.fillText (longest table) (+ x w) (+ y h 20))
+
+  (ctx.fillText (time-to-seconds (cadr mm)) x (- y 5))
+  (ctx.fillText (time-to-seconds (car mm)) x (+ y h -5))
+
+  )))
+
+(define (nightjar-fit-graph table c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx (string-append "Egg difficulty graph") 0 100 1000 70)
+      (set! ctx.font "normal 20pt 'Press Start 2P'")
+      (draw-fitness-graph ctx table 50 250 1000 500))
+
+    (game-modify-buttons
+     (list
+      (image-button
+       "Back" 1150 720 "jumpy" (find-image "button.png")
+       (lambda (c) (nightjar-env c))))
+     c))))
+
+
+(define (nightjar-research game-type c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (robo-nightjar-says ctx 18 "Click on my eggs when you see them. Small timing differences help me to make better camouflage patterns.")
+
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx "Are you happy for us to use your timing information?" 0 100 1000 70)
+      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+
+    (game-modify-buttons
+     (list
+
+      (image-button
+       "" 835 455 "rotate" (find-image "yes.png")
+       (lambda (c)
+         (let ((replicate (random num-replicates)))
+           (server-call-mutate
+            "sample"
+            (list
+             (list "player-id" (egglab-data-player-id (game-data c)))
+             (list "population" (egglab-data-land (game-data c)))
+             (list "replicate" replicate)
+             (list "count" num-eggs-from-population))
+            (lambda (c data)
+              (let ((ret (JSON.parse data)))
+                (let ((player-id (cadr (car ret)))
+                      (samples (cadr ret)))
+                  (let ((pop (make-population
+                              "flicker"
+                              (if (eq? null samples)
+                                  ()
+                                  (map
+                                   (lambda (d)
+                                     ;; individually parse the egg's code
+                                     (cons (JSON.parse (car d)) (cdr d)))
+                                   (cadr samples)))
+                              (if (eq? (car samples) "fill") 1 0)
+                              (car samples))))
+                    (nightjar-flicker-game
+                     (game-modify-data
+                      (lambda (d)
+                        (let ((time-now (- (js "new Date()") load-time)))
+                          (egglab-data-start-game
+                           d player-id time-now pop (list 0 0) replicate)))
+                      c))))))))
+         (nightjar-generating-eggs c)))
+
+     (image-button
+      "Back" 1150 720 "jumpy" (find-image "button.png")
+      (lambda (c) (nightjar-choose-location c)))
+     )
+
+     c))))
+
+(define (nightjar-generating-eggs c)
+  (game-modify-update
+   (lambda (t c)
+     c)
+   (game-modify-render
+    (lambda (ctx)
+      (robo-nightjar-says ctx 25 "Please wait while I generate some eggs just for you... GET READY TO PLAY!"))
+    (game-modify-buttons (list) c))))
+
+(define (nightjar-thanks c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx "Thanks for playing! With your help the eggs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
+
+      (text-flashy-render ctx (string-append "Your average time was: "
+                                    (time-to-seconds (egglab-data-player-time (game-data c)))
+                                    " seconds.")
+                          225 400 (game-time c))
+
+      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+
+    (game-modify-postrender
+     (lambda (ctx) 0)
+     (game-modify-buttons
+      (list
+
+       (image-button "" 200 600 "none" (find-image "twitter.png")
+                     (lambda (c)
+                       (set! window.location "https://twitter.com/ProjectNightjar") c))
+
+       (image-button "" 1000 600 "none" (find-image "facebook.png")
+                     (lambda (c)
+                       (set! window.location "https://www.facebook.com/SensoryEcology") c))
+
+       (image-button
+        "Continue" (/ screen-width 2) 600 "jumpy" (find-image "button.png")
+        (lambda (c)
+          (if (eq? (egglab-data-username (game-data c)) "???")
+              (nightjar-enter-name c)
+              (begin
+                (server-call
+                 "add-score"
+                 (list
+                  (list "player-id" (egglab-data-player-id (game-data c)))
+                  (list "name" (egglab-data-username (game-data c)))
+                  (list "score" (egglab-data-player-time (game-data c)))
+                  (list "population" (egglab-data-land (game-data c)))
+                  (list "replicate" (egglab-data-replicate (game-data c)))))
+                (nightjar-env c))))))
+      c)))))
+
+(define (type-into str ch)
+  (car
+   (foldl
+    (lambda (c r)
+      (if (and (not (cadr r)) (eq? c "?"))
+          (list (string-append (car r) ch) #t)
+          (list (string-append (car r) c) (cadr r))))
+    (list "" #f)
+    (str.split ""))))
+
+(define (type-into-delete str)
+  (car (foldl
+        (lambda (c r)
+          (if (and (not (cadr r)) (not (eq? c "?")))
+              (list (string-append "?" (car r)) #t)
+              (list (string-append c (car r)) (cadr r))))
+        (list "" #f)
+        (reverse (str.split "")))))
+
+(define (type-username ch c)
+  (game-modify-data
+   (lambda (d)
+     (egglab-data-modify-username d (type-into (egglab-data-username d) ch)))
+   c))
+
+(define (type-delete c)
+  (game-modify-data
+   (lambda (d)
+     (egglab-data-modify-username d (type-into-delete (egglab-data-username d))))
+   c))
+
+(define (nightjar-enter-name c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx "Enter your name" 0 200 1000 70)
+      (set! ctx.font "normal 50pt 'Press Start 2P'")
+      (wrap-text ctx (egglab-data-username (game-data c)) 0 280 1000 70)
+      (set! ctx.font "normal 30pt 'Press Start 2P'"))
+
+    (game-modify-buttons
+     (append
+      (index-map
+       (lambda (i ch)
+         (let ((x (+ 100 (* (modulo i 10) 105)))
+               (y (+ 400 (* (Math.floor (/ i 10)) 130))))
+           (image-button ch x y #f (find-image "button.png")
+                         (lambda (c) (type-username ch c)))))
+       (list "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M"
+             "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
+
+      (list
+       (image-button "Delete" 850 700 "jumpy" (find-image "button.png")
+                     (lambda (c) (type-delete c)))
+
+       (image-button "Done" 1100 700 "jumpy" (find-image "button.png")
+                     (lambda (c)
+                       (server-call
+                        "add-score"
+                        (list
+                         (list "player-id" (egglab-data-player-id (game-data c)))
+                         (list "name" (egglab-data-username (game-data c)))
+                         (list "score" (egglab-data-player-time (game-data c)))
+                         (list "population" (egglab-data-land (game-data c)))
+                         (list "replicate" (egglab-data-replicate (game-data c)))))
+                       (server-call
+                        "player"
+                        (list
+                         (list "player-id" (egglab-data-player-id (game-data c)))
+                         (list "name" (egglab-data-username (game-data c)))
+                         (list "played-before" "#f")
+                         (list "age-range" 2)))
+                       (nightjar-env c))))
+      )
+     c))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (find-egg drawable pop)
+  (let ((r (filter
+            (lambda (egg)
+              (eq? drawable (individual-drawable egg)))
+            pop)))    (if (null? r) #f (car r))))
+
+(define (time-elapsed c)
+  (- (game-time c) (egglab-data-time (game-data c))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define speed 0.2)
+
+(define (screen-pos c egg)
+  (- screen-width
+     (+ (car (individual-pos egg))
+        (car (game-world-offset c)))))
+
+(define (fitness c egg)
+  (/ (screen-pos c egg) speed))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (reset-images c)
+  (game-modify-data
+   (lambda (d)
+     (let ((land (egglab-data-land (game-data c))))
+       (egglab-data-modify-images
+        d (map
+           (lambda (i)
+             (bg-full-path land i))
+           (shuffle
+            (cond
+             ((eq? land "CF") cf_images)
+             ((eq? land "CP") cp_images)
+             ((eq? land "MV") (append cf_images cp_images))
+             (else (msg "oops") cf_images)))))))
+   c))
+
+(define (egglab-add-time t d)
+  (egglab-data-modify-player-time
+   d (+ t (egglab-data-player-time d))))
+
+(define (egglab-finish-time t d)
+  (egglab-data-modify-player-time
+   d (/ (+ t (egglab-data-player-time d)) num-eggs-total)))
+
+(define (submit-egg egg c)
+  (server-call
+   "add"
+   (list
+    (list "phase" (individual-phase egg))
+    (list "population" (egglab-data-land (game-data c)))
+    (list "replicate" (egglab-data-replicate (game-data c)))
+    (list "egg-id" (individual-id egg))
+    (list "player-id" (egglab-data-player-id (game-data c)))
+    (list "fitness" (time-elapsed c))
+    (list "parent" (individual-parent egg))
+    (list "image" (car (egglab-data-images (game-data c))))
+    (list "x-pos" (car (individual-pos egg)))
+    (list "y-pos" (cadr (individual-pos egg)))
+    (list "genotype" (JSON.stringify (individual-egg egg))))))
+
+(define (build-next-egg c)
+  (if (eq? (length (egglab-data-eggs (game-data c))) 1)
+      (game-modify-data
+       (lambda (d)
+         (egglab-finish-time (time-elapsed c) d))
+       (reset-images (nightjar-thanks c)))
+      (game-modify-buttons
+       (list
+        (flicker-build-egg
+         (game-modify-data
+          (lambda (d)
+            (egglab-add-time
+             (time-elapsed c)
+             (egglab-data-modify-images
+              (egglab-data-modify-offset
+               (egglab-data-modify-eggs
+                (egglab-data-modify-time
+                 d
+                 (game-time c))
+                (cdr (egglab-data-eggs d)))
+               (list 0 0))
+              (cdr (egglab-data-images d)))))
+          c)))
+       c)))
+
+(define (seconds-taken c)
+  (/ (time-elapsed c) 1000))
+
+(define (result-text t)
+  (cond
+   ((< t 1)
+    (play-sound (string-append "great-" (+ 1 (random 3)) ".wav"))
+    (string-append
+     t " Secs - "
+     (choose (list "Super Reflex" "X-Ray vision!" "Perfect predator" "SO FAST"))))
+   ((and (> t 1) (< t 2))
+    (play-sound (string-append "good-" (+ 1 (random 3)) ".wav"))
+    (string-append
+     t " Secs - "
+     (choose (list "Nice work" "Not too shabby" "Good"))))
+   (else
+    (play-sound (string-append "ok-" (+ 1 (random 3)) ".wav"))
+    (string-append
+     t " Secs - "
+     (choose (list "Try harder" "Could do better" "Mouse problem?" "Looking the other way?"))
+     ))))
+
+(define (flicker-build-egg c)
+  (let ((egg (car (egglab-data-eggs (game-data c)))))
+    (let ((pos (individual-pos egg)))
+      (image-button
+       "" (car pos) (cadr pos) #f
+       (individual-drawable egg)
+       (lambda (c)
+         (submit-egg egg c)
+         (let ((t (seconds-taken c)))
+           (nightjar-flicker-result
+            c t (result-text t)
+            (list (random-range -200 200) (random-range 200 800))
+            (list (- (rndf) 0.5) (- (rndf) 0.5))
+            (+ (game-time c) 500))))))))
+
+(define (nightjar-flicker-game c)
+  (game-modify-update
+   (lambda (t c)
+     (cond
+      ((< (seconds-taken c) photo-time-allowed)
+       c)
+      (else
+       ;; don't submit ones not clicked on???
+       (submit-egg (car (egglab-data-eggs (game-data c))) c)
+       (play-sound (string-append "fail.wav"))
+       (build-next-egg c))))
+   (game-modify-render
+    (lambda (ctx)
+      (ctx.drawImage
+       (find-image (car (egglab-data-images (game-data c))))
+       (- 0 (car (egglab-data-offset (game-data c))))
+       (- 0 (cadr (egglab-data-offset (game-data c)))))
+      (set! ctx.font "normal 30pt 'Press Start 2P'"))
+    (game-modify-postrender
+     (lambda (ctx)
+       (nightjar-draw-clock ctx (seconds-taken c) photo-time-allowed))
+     (game-modify-buttons
+      (list
+       (flicker-build-egg c))
+      c)))))
+
+(define (nightjar-flicker-result c time text pos dir end-time)
+  (game-modify-update
+   (lambda (t c)
+     (if (> t end-time)
+         (build-next-egg (nightjar-flicker-game c))
+         c))
+   (game-modify-render
+    (lambda (ctx)
+      (ctx.drawImage (find-image (car (egglab-data-images (game-data c))))
+                     (- 0 (car (egglab-data-offset (game-data c))))
+                     (- 0 (cadr (egglab-data-offset (game-data c)))))
+      (nightjar-draw-clock ctx time photo-time-allowed)
+      (set! ctx.font "normal 20pt 'Press Start 2P'")
+      (set! ctx.font "normal 30pt 'Press Start 2P'"))
+    (game-modify-postrender
+     (lambda (ctx) 0)
+     (game-modify-buttons
+      (list) c)))))
+
+;;      (let ((x (+ (car pos) (* (car dir) 0.1 (- end-time (game-time c)))))
+;;            (y (+ (cadr pos) (* (cadr dir) 0.1 (- end-time (game-time c))))))
+;;        (set! ctx.fillStyle "#000")
+;;        (wrap-text ctx text x y)
+;;        (if (< time 1)
+;;            (let ((t (game-time c)))
+;;              (set! ctx.fillStyle (rgb-to-hex (* 256 (sin (* t 0.005)))
+;;                                              (* 256 (sin (* t 0.006)))
+;;                                              (* 256 (sin (* t 0.008))))))
+;;            (set! ctx.fillStyle "#fff"))
+;;      (wrap-text ctx text (- x 5) (- y 5))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (nightjar-best c replicate)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (set! ctx.font "normal 20pt 'Press Start 2P'")
+      (wrap-text ctx "Mozambique nightjar" -400 50 400 70)
+      (wrap-text ctx "Pennant-winged nightjar" 0 50 400 70)
+      (wrap-text ctx "Fiery-necked nightjar" 400 50 400 70)
+      (set! ctx.font "normal 15pt 'Press Start 2P'")
+      (robo-nightjar-says-bottom
+       ctx 18
+       (string-append "These are my best eggs for each species in population "
+                      (+ replicate 1) ". Click on an egg to see it's ancestors."))
+      (set! ctx.font "normal 10pt 'Press Start 2P'"))
+
+    (game-modify-buttons
+     (append
+      (list
+
+       (image-button
+        "Back" 1150 720 "jumpy" (find-image "button.png")
+        (lambda (c) (nightjar-env c))))
+
+      (map
+       (lambda (best-egg)
+         (let ((egg (car best-egg))
+               (fitness (cadr best-egg)))
+           (let ((pos (individual-pos egg)))
+             (image-button
+              "" (car pos) (cadr pos) #f
+              (individual-drawable egg)
+              (lambda (c)
+                (server-call-mutate
+                 "family-tree"
+                 (list (list "id" (individual-id egg))) ;; only works for the viz screens
+                 (lambda (c data)
+                   (let ((d (reverse (crop (JSON.parse data) 10))))
+                     (nightjar-family-tree c replicate egg d
+                                           (render-egg-family-tree d)))))
+                c)))))
+       (egglab-data-eggs (game-data c))))
+     c))))
+
+(define (nightjar-family-tree c replicate egg ancestors eggs)
+  (game-modify-render
+   (lambda (ctx)
+
+     (set! ctx.font "normal 20pt 'Press Start 2P'")
+     (ctx.fillText "Generations" 50 100)
+     (ctx.fillText "Fitness (average time taken to find in seconds)" 50 380)
+
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+
+     (index-for-each
+      (lambda (i anc)
+        (let ((x (+ (* i 100) 150)))
+          (fill-centre-text ctx (list-ref (car anc) 2) x 170)
+          (fill-centre-text ctx (+ "" (time-to-seconds (list-ref (car anc) 3))) x 550)
+          ))
+      ancestors)
+
+     (let ((table (map (lambda (anc) (time-to-seconds (list-ref (car anc) 3))) ancestors)))
+       (draw-graph ctx "#ff7"
+                   table
+                   150 400 (* 100 (- (length ancestors) 1))
+                   100 100 (min-max table)))
+
+     (ctx.fillText "Egg ancestors" 20 50)
+     (robo-nightjar-says-bottom
+      ctx 18
+      (string-append "These are the decentants of this successful egg. Click on one to see how it's constructed.")))
+   (game-modify-buttons
+    (cons
+     (image-button
+      "Back" 1150 720 "jumpy" (find-image "button.png")
+      (lambda (c)
+        (nightjar-best c replicate)))
+
+      (index-map
+       (lambda (i egg)
+         (let ((pos (+ 150 (* i 100))))
+           (image-button
+            "" pos 250 #f
+            egg
+            (lambda (c)
+              (let ((genome (JSON.parse (list-ref (car (list-ref ancestors i)) 1))))
+                (nightjar-egg-view
+                 c replicate egg ancestors eggs
+                 (render-egg-genome
+                  ctx genome
+                  (/ screen-width 2) (/ screen-height 2))
+                 genome))))))
+       eggs)
+     )
+    c)))
+
+(define (nightjar-egg-view c replicate egg ancestors eggs image genome)
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (ctx.drawImage image 0 0)
+     (ctx.fillText "Egg pattern construction" 20 50))
+   (game-modify-buttons
+    (list
+     (image-button
+      "Back" 1150 720 "jumpy" (find-image "button.png")
+      (lambda (c)
+        (nightjar-family-tree c replicate egg ancestors eggs)))
+     (image-button
+      "Mutate test" 150 720 "jumpy" (find-image "button.png")
+      (lambda (c)
+        (nightjar-test c replicate egg ancestors eggs image genome
+                       (build-list
+                        28
+                        (lambda (i)
+                          (egg-drawable (egg-mutate genome (calc-mutation-rate)) #f))
+                        ))))
+     )
+    c)))
+
+
+(define (nightjar-test c replicate egg ancestors eggs image genome vars)
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 20pt 'Press Start 2P'")
+     (wrap-text ctx "This screen shows the range of mutations possible for this egg." 0 100 1000 1000)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (index-for-each
+      (lambda (i egg)
+        (ctx.drawImage egg
+                       (+ 250 (* 100 (modulo i 7)))
+                       (+ 150 (* 130 (Math.floor (/ i 7))))))
+      vars)
+     ;;(draw-egg-family-tree ctx ancestors eggs)
+     (ctx.fillText "Egg mutation test" 20 50))
+   (game-modify-buttons
+    (list
+     (image-button
+      "Back" 1150 720 "jumpy" (find-image "button.png")
+      (lambda (c)
+        (nightjar-egg-view c replicate egg ancestors eggs image genome)))
+     )
+    c)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; startup
+
+(set! ctx.font "normal 50pt 'Press Start 2P'")
+
+(load-sounds!
+ (list
+  "great-1.wav"
+  "great-2.wav"
+  "great-3.wav"
+  "good-1.wav"
+  "good-2.wav"
+  "good-3.wav"
+  "ok-1.wav"
+  "ok-2.wav"
+  "ok-3.wav"
+  "fail.wav"))
+
+(load-images!
+ (append
+  (list
+   "button.png"
+   "bigbutton-1.png"
+   "bigbutton-2.png"
+   "play-button.png"
+   "mute-on.png"
+   "mute-off.png"
+   "egg.png"
+   "cf.png"
+   "cp.png"
+   "mv.png"
+   "eggs.jpg"
+   "bubble.png"
+   "bubble2.png"
+   "bubble4.png"
+   "ren.png"
+   "ren-eye1.png"
+   "ren-eye2.png"
+   "ren-eye3.png"
+   "ren-leg1.png"
+   "ren-leg2.png"
+   "yes.png"
+   "no.png"
+   "bbsrc.png"
+   "cu.png"
+   "exeter.png"
+   "cuckoos.png"
+   "foam.png"
+   "sensory-ecology.png"
+   "browser-check.png"
+   "facebook.png"
+   "twitter.png"
+   )
+  egg-images)
+ (lambda ()
+   (start-game canvas ctx)))
+
+(define cf_images
+  (list
+"CF/CF001_L_V_2012-c.jpg"
+"CF/CF001_L_V_2013-c.jpg"
+"CF/CF002_L_V_2012-c.jpg"
+"CF/CF002_R_V_2013-c.jpg"
+"CF/CF004_R_V_2012-c.jpg"
+"CF/CF005_L_V_2012-c.jpg"
+"CF/CF005_R_V_2013-c.jpg"
+"CF/CF006_L_V_2013-c.jpg"
+"CF/CF006_R_V_2013-c.jpg"
+"CF/CF008_L_V_2013-c.jpg"
+"CF/CF008_R_V_2013-c.jpg"
+"CF/CF010_L_V_2013-c.jpg"
+"CF/CF010_R_V_2013-c.jpg"
+"CF/CF011_L_V_2013-c.jpg"
+"CF/CF012_L_V_2012-c.jpg"
+"CF/CF012_L_V_2013-c.jpg"
+"CF/CF012_R_V_2013-c.jpg"
+"CF/CF013_L_V_2013-c.jpg"
+"CF/CF015_L_V_2012-c.jpg"
+"CF/CF015_R_V_2012-c.jpg"
+"CF/CF016_L_V_2013-c.jpg"
+"CF/CF016_R_V_2013-c.jpg"
+"CF/CF017_L_V_2012-c.jpg"
+"CF/CF018_L_V_2013-c.jpg"
+"CF/CF018_R_V_2013-c.jpg"
+"CF/CF020_L_V_2013-c.jpg"
+"CF/CF022_R_V_2012-c.jpg"
+"CF/CF025_L_V_2012-c.jpg"
+"CF/CF025_R_V_2012-c.jpg"
+"CF/CF026_L_V_2012-c.jpg"
+"CF/CF026_R_V_2012-c.jpg"
+"CF/CF027_L_V_2012-c.jpg"
+"CF/CF027_L_V_2013-c.jpg"
+"CF/CF027_R_V_2013-c.jpg"
+"CF/CF028_L_V_2013-c.jpg"
+"CF/CF031_L_V_2012-c.jpg"))
+
+
+(define cp_images
+  (list
+"CP/CP002_R_V_2013-c.jpg"
+"CP/CP004_R_V_2013-c.jpg"
+"CP/CP005_L_V_2013-c.jpg"
+"CP/CP007_L_V_2013-c.jpg"
+"CP/CP007_R_V_2013-c.jpg"
+"CP/CP008_R_V_2013-c.jpg"
+"CP/CP009_R_V_2013-c.jpg"
+"CP/CP010_L_V_2013-c.jpg"
+"CP/CP010_R_V_2013-c.jpg"
+"CP/CP011_L_V_2012-c.jpg"
+"CP/CP011_R_V_2013-c.jpg"
+"CP/CP012_L_V_2012-c.jpg"
+"CP/CP013_R_V_2013-c.jpg"
+"CP/CP014_R_V_2012-c.jpg"
+"CP/CP014_R_V_2013-c.jpg"
+"CP/CP015_R_V_2013-c.jpg"
+"CP/CP016_L_V_2012-c.jpg"
+"CP/CP016_R_V_2012-c.jpg"
+"CP/CP017_L_V_2012-c.jpg"
+"CP/CP017_L_V_2013-c.jpg"
+"CP/CP017_R_V_2012-c.jpg"
+"CP/CP018_R_V_2013-c.jpg"
+"CP/CP019_R_V_2012-c.jpg"
+"CP/CP021_R_V_2013-c.jpg"
+"CP/CP023_L_V_2013-c.jpg"
+"CP/CP024_L_V_2013-c.jpg"
+"CP/CP025_L_V_2013-c.jpg"
+"CP/CP025_R_V_2012-c.jpg"
+"CP/CP025_R_V_2013-c.jpg"
+"CP/CP028_L_V_2013-c.jpg"
+"CP/CP029_L_V_2012-c.jpg"
+"CP/CP029_R_V_2013-c.jpg"
+"CP/CP030_L_V_2013-c.jpg"
+"CP/CP032_L_V_2012-c.jpg"
+"CP/CP035_L_V_2013-c.jpg"
+"CP/CP041_L_V_2013-c.jpg"

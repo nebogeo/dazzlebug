@@ -1,0 +1,330 @@
+;; -*- mode: scheme; -*-
+;; Egglab Copyright (C) 2013 Dave Griffiths
+;;
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU Affero General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU Affero General Public License for more details.
+;;
+;; You should have received a copy of the GNU Affero General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+(define speed 0.2)
+
+(define (make-egghunt egg-ids time)
+  (list egg-ids time))
+
+(define (egghunt-egg-ids d) (list-ref d 0))
+(define (egghunt-modify-egg-ids d v) (list-replace d 0 v))
+(define (egghunt-time d) (list-ref d 1))
+(define (egghunt-modify-time d v) (list-replace d 1 v))
+
+(define (time-elapsed c)
+  (- (game-time c) (egghunt-time (game-data c))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define egghunt-id (getURLParameter "egghunt"))
+
+;; roughly
+(define (fitness c egg)
+  (/ (screen-pos c egg) speed))
+
+(define (start-egghunt c)
+  (server-call-mutate
+   "getegghunt"
+   (list (list "id" egghunt-id))
+   (lambda (c data)
+     (let ((hunt-data (JSON.parse data)))
+       (let ((info (car (car hunt-data)))
+             (e (list-ref hunt-data 1)))
+         (game-modify-buttons
+          (append
+           (index-map
+            (lambda (i egg)
+              (let ((drawable (egg-drawable (JSON.parse (car egg)))))
+                (image-button
+                 "" (+ (list-ref egg 1) 70) (+ 70 65 (list-ref egg 2)) "none"
+                 drawable
+                 (lambda (c)
+                   ;; prolly not....
+                   ;;(server-call
+                   ;; "add"
+                   ;; (list
+                   ;;  (list "image" "")
+                   ;;  (list "game" "scroll")
+                   ;;  (list "genotype" (scheme-txt (individual-egg egg)))
+                   ;;  (list "fitness" (fitness c egg))))
+
+                   (play-sound
+                    (if (< (rndf) 0.5)
+                        (string-append "great-" (+ 1 (random 3)) ".wav")
+                        (string-append "good-" (+ 1 (random 3)) ".wav")))
+
+                   (game-modify-buttons
+                    (filter
+                     (lambda (b)
+                       (not (eq? (button-drawable b) drawable)))
+                     (game-buttons c))
+                    c)))))
+            e)
+           (list
+            (image-button
+             "" (/ 4948 2) 370 "none"
+             (find-image (list-ref info 0)) (lambda (c) c))))
+          (nightjar-challenge
+           info (game-modify-data
+                 (lambda (d)
+                   (make-egghunt () (game-time c)))
+                 c)))))))
+  c)
+
+
+
+
+(define (nightjar-intro c)
+  (let ((icon-x 150)
+        (icon-y 520))
+    (game-modify-render
+     (lambda (ctx)
+       (ctx.drawImage (find-image "eggs.jpg") 0 0)
+       (set! ctx.font "normal 70pt 'Press Start 2P'")
+       (robo-nightjar-says ctx 17 "I have an Easter egg hunt made specially for you with my artificial eggs to help ecology and evolution research!" 1)
+       (set! ctx.font "normal 40pt 'Press Start 2P'")
+       (wrap-text ctx "Easter Robot Nightjar says:" 0 160 1000 50)
+       (set! ctx.font "normal 15pt 'Press Start 2P'")
+       (set! ctx.globalAlpha 0.8)
+       (set! ctx.fillStyle "#ffffff")
+       (ctx.fillRect 0 (+ icon-y 140) 1500 100)
+       (set! ctx.globalAlpha 1))
+
+     (game-modify-buttons
+      (list
+       (image-button
+        ""
+        820 450
+        "rotate" (find-image "yes.png")
+        (lambda (c)
+          (start-egghunt c)))
+
+      (image-button
+       "" (+ icon-x 0) (+ icon-y 190) #f (find-image "sensory-ecology.png")
+       (lambda (c)
+         (set! window.location "http://www.sensoryecology.com/")
+         c))
+
+      (image-button
+       "" (+ icon-x 130) (+ icon-y 190) #f (find-image "cuckoos.png")
+       (lambda (c)
+         (set! window.location "http://www2.zoo.cam.ac.uk/africancuckoos/home.html")
+         c))
+
+      (image-button
+       "" (+ icon-x 290) (+ icon-y 200) #f (find-image "exeter.png")
+       (lambda (c)
+         (set! window.location "http://www.exeter.ac.uk/")
+         c))
+
+      (image-button
+       "" (+ icon-x 470) (+ icon-y 190) #f (find-image "cu.png")
+       (lambda (c)
+         (set! window.location "http://www.zoo.cam.ac.uk/")
+         c))
+
+      (image-button
+       "" (+ icon-x 690) (+ icon-y 190) #f (find-image "bbsrc.png")
+       (lambda (c)
+         (set! window.location "http://www.bbsrc.ac.uk/")
+         c))
+
+      (image-button
+       "" (+ icon-x 900) (+ icon-y 190) #f (find-image "foam.png")
+       (lambda (c)
+         (set! window.location "http://fo.am")
+         c))
+
+     )
+    c))))
+
+
+(define (nightjar-challenge info c)
+  (game-modify-update
+   (lambda (t c)
+     (let ((t (+ 1000 (* (time-elapsed c) (- 0 speed)))))
+       (cond
+        ((> t -4000)
+         (if (eq? (length (game-buttons c)) 1)
+             (game-modify-postrender
+              (lambda (ctx) 0)
+              (nightjar-well-done (game-modify-world-offset c (list 0 0))))
+             (game-modify-world-offset c (list t 0))))
+        (else
+         (game-modify-postrender
+          (lambda (ctx) 0)
+          (if (> (length (game-buttons c)) 1)
+              (nightjar-try-again
+               info
+               (- (length (game-buttons c)) 1)
+               (game-modify-world-offset c (list 0 0)))
+              (nightjar-well-done (game-modify-world-offset c (list 0 0)))))))))
+   (game-modify-postrender
+    (lambda (ctx)
+      (set! ctx.font "normal 25pt 'Press Start 2P'")
+      (wrap-text ctx "Easter robot nightjar's amazing Easter egg hunt!" 0 50 1000 1000)
+      (robo-nightjar-says-bottom2 ctx 28 "See if you can click on all five of my eggs!")
+      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+    (game-modify-render (lambda (ctx) 0) c))))
+
+(define (nightjar-try-again info count c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (let ((txt (if (eq? count 1) "There is one left"
+                     (string-append "There are " count " left"))))
+        (robo-nightjar-says
+         ctx 25 (string-append "Not all eggs found. " txt
+                               "! Would you like to try again?")))
+      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+
+    (game-modify-buttons
+     (list
+      (image-button
+       ""
+       780 450
+       "rotate" (find-image "yes.png")
+       (lambda (c)
+         (start-egghunt c)))
+
+      (image-button
+       ""
+       870 450
+       "rotate" (find-image "no.png")
+       (lambda (c)
+         (nightjar-thanks c)))
+      )
+     c))))
+
+(define (nightjar-well-done c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (robo-nightjar-says ctx 25 "Well done, you found all the eggs!")
+      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+
+    (game-modify-buttons
+     (list
+      (image-button
+       ""
+       800 430
+       "rotate" (find-image "yes.png")
+       (lambda (c)
+         (nightjar-thanks c)))
+      )
+    c))))
+
+(define (nightjar-thanks c)
+  (game-modify-render
+   (lambda (ctx)
+     (set! ctx.font "normal 30pt 'Press Start 2P'")
+     (wrap-text ctx "Thankyou for playing my Easter egg hunt!" 0 100 1000 1000)
+     (set! ctx.font "normal 20pt 'Press Start 2P'")
+     (set! ctx.fillStyle "#000")
+     (robo-nightjar-bot-right ctx 17 "Help discover new egg patterns by playing the full game, or find out more about camouflage research."))
+
+   (game-modify-buttons
+    (list
+
+     (image-button
+      "Go to the main game" 600 200 "slidy" (find-image "bigbutton-1.png")
+      (lambda (c)
+        (set! window.location main-game-url)
+        c))
+
+     (image-button
+      "About the project" 600 400 "slidy" (find-image "bigbutton-2.png")
+      (lambda (c)
+        (set! window.location "http://nightjar.exeter.ac.uk")
+        c))
+
+     (image-button "" 200 600 "none" (find-image "twitter.png")
+                   (lambda (c)
+                     (set! window.location "https://twitter.com/ProjectNightjar") c))
+
+     (image-button "" 600 600 "none" (find-image "facebook.png")
+                   (lambda (c)
+                     (set! window.location "https://www.facebook.com/SensoryEcology") c))
+
+     )
+    (game-modify-draggables (list) c))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; startup
+
+(set! ctx.font "normal 50pt 'Press Start 2P'")
+
+(define egghuntbgs
+  (list
+   "bg/egghunt/CF005_L_V_2012.jpg"
+   "bg/egghunt/CF031_L_V_2012.jpg"
+   "bg/egghunt/CP001_L_V_2013.jpg"
+   "bg/egghunt/CP017_L_V_2013.jpg"
+   "bg/egghunt/CF010_L_V_2013.jpg"
+   "bg/egghunt/CF034_L_V_2012.jpg"
+   "bg/egghunt/CP009_R_V_2013.jpg"
+   "bg/egghunt/CP042_L_V_2013.jpg"))
+
+(load-sounds!
+ (list
+  "great-1.wav"
+  "great-2.wav"
+  "great-3.wav"
+  "good-1.wav"
+  "good-2.wav"
+  "good-3.wav"))
+
+(load-images!
+ (append
+  (list
+   "button.png"
+   "bigbutton-1.png"
+   "bigbutton-2.png"
+   "medbutton-1.png"
+   "egg.png"
+   "cf.png"
+   "cp.png"
+   "mv.png"
+   "eggs.jpg"
+   "bubble.png"
+   "bubble2.png"
+   "bubble3.png"
+   "bubble4.png"
+   "ren.png"
+   "ren-eye1.png"
+   "ren-eye2.png"
+   "ren-eye3.png"
+   "ren-leg1.png"
+   "ren-leg2.png"
+   "yes.png"
+   "no.png"
+   "bbsrc.png"
+   "cu.png"
+   "exeter.png"
+   "cuckoos.png"
+   "foam.png"
+   "sensory-ecology.png"
+   "facebook.png"
+   "twitter.png")
+   egghuntbgs
+   egg-images)
+ (lambda ()
+   (start-game canvas ctx)))
