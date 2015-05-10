@@ -305,20 +305,6 @@
        )
    (game-modify-buttons
     (list
-
-     (egglab-button
-      "Play" 600 450 (find-image "bigbutton-1.png")
-      "Try and find new eggs. Their camouflage changes as people play."
-      (lambda (c)
-        (async-load-images c "CF" bg_images)
-        (nightjar-research
-         "flicker"
-         (game-modify-data
-          (lambda (d)
-            (dbg
-             (egglab-data-init "CF")))
-          c))))
-
      (image-button
       "Sound" 1020 700 "jumpy"
       (if (zero? (game-mute c))
@@ -335,19 +321,33 @@
           (cdr (game-buttons c)))
          (game-flip-mute c))))
 
+     (egglab-button
+      "Play" 600 450 (find-image "bigbutton-1.png")
+      "Try and find new eggs. Their camouflage changes as people play."
+      (lambda (c)
+        (async-load-images c "CF" bg_images)
+        (nightjar-research
+         "flicker"
+         (game-modify-data
+          (lambda (d)
+            (dbg
+             (egglab-data-init "CF")))
+          c))))
+
+
     (image-button
      "Browser check" 600 700 "jumpy" (find-image "button.png")
      (lambda (c)
        c))
 
-    (image-button
-     "More..." 870 700 "jumpy" (find-image "button.png")
-     (lambda (c)
-       (nightjar-env c)))
-
 
      )
     c)))
+
+;    (image-button
+;     "More..." 870 700 "jumpy" (find-image "button.png")
+;     (lambda (c)
+;       (nightjar-env c)))
 
 
 
@@ -641,9 +641,9 @@
    (lambda (t c) c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-says ctx 18 "Click on my eggs when you see them. Small timing differences help me to make better camouflage patterns.")
+      (robo-nightjar-says ctx 18 "Try and click on the boxes as fast as you can. Small differences help to make better camouflage patterns.")
 
-      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (set! ctx.font "normal 15pt 'Press Start 2P'")
       (wrap-text ctx "Are you happy for us to use your timing information?" 0 100 1000 70)
       (set! ctx.font "normal 15pt 'Press Start 2P'"))
 

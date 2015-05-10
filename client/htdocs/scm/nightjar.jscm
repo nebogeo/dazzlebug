@@ -259,7 +259,7 @@
 
 
 (define (button-text-jumpy-render! b t)
-  (set! ctx.font "normal 30pt 'Press Start 2P'")
+  (set! ctx.font "normal 15pt 'Press Start 2P'")
   (set! ctx.fillStyle "#000")
   (let ((m (ctx.measureText (button-name b)))
         (cm (ctx.measureText "w"))
