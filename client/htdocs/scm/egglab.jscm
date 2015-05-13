@@ -302,7 +302,7 @@
        (set! ctx.font "normal 30pt 'Press Start 2P'")
        (wrap-text ctx "(extremely beta)" 0 220 1000 60)
        (set! ctx.font "normal 15pt 'Press Start 2P'")
-       (wrap-text ctx "Wholesome citizen science rectangle hunting fun for the whole family..." 0 260 1000 25)
+       (wrap-text ctx "Catch the rectangles for citizen science camouflage evolution glory. It's fun for the whole family." 0 260 1000 25)
        (set! ctx.font "normal 15pt 'Press Start 2P'")
        )
    (game-modify-buttons
@@ -332,8 +332,7 @@
          "flicker"
          (game-modify-data
           (lambda (d)
-            (dbg
-             (egglab-data-init "CF")))
+	    (egglab-data-init "CF"))
           c))))
 
 
@@ -477,8 +476,15 @@
 
       (image-button
        "Play again!" 1100 720 "jumpy" (find-image "button.png")
-       (lambda (c) (nightjar-choose-location c))))
+       (lambda (c) 
+        (nightjar-research
+         "flicker"
+         (game-modify-data
+          (lambda (d)
+	    (egglab-data-init "CF"))
+          c)))))
      c))))
+
 
 (define (nightjar-generating-best-eggs c)
   (game-modify-update
@@ -944,8 +950,8 @@
     (let ((pos (individual-pos egg)))
       (animated-button
        "" (car pos) (cadr pos)
-       (random-range -50 50)
-       (random-range -50 50) #f
+       (random-range -500 500)
+       (random-range -500 500) #f
        (individual-drawable egg)
        (lambda (c)
          (submit-egg egg c)
