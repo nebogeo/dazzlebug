@@ -119,7 +119,7 @@
   (let ((s (select
             db (string-append
                 "select p.player_name, p.average_score, p.generation from high_scores as p "
-                "where p.population = ? and p.generation > 12 "
+                "where p.population = ? and p.generation >= 0 "
                 "order by p.average_score limit ?")
             population count)))
     (if (null? s)

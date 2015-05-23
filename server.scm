@@ -147,8 +147,7 @@
        (scheme->json
         (list
          (top-eggs db "CF" replicate (string->number count))
-         (top-eggs db "MV" replicate (string->number count))
-         (top-eggs db "CP" replicate (string->number count)))))))))
+         '() '())))))))
 
    (register
     (req 'family-tree '(id))
