@@ -430,7 +430,7 @@
          c))
 
       (egglab-button
-       "Most successful eggs" 600 400 (find-image "bigbutton-2.png")
+       "Most successful patterns" 600 400 (find-image "bigbutton-2.png")
        "See my most successful eggs for each species."
        (lambda (c)
          (let ((replicate (random num-replicates)))
