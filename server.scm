@@ -44,13 +44,16 @@
 
 (define sema (make-semaphore 1))
 
-(define (syncro fn)
+(define (syncro-old fn)
   (msg "s-start")
   (semaphore-wait sema)
   (let ((r (fn)))
     (msg "s-end")
     (semaphore-post sema)
     r))
+
+(define (syncro fn)
+  (fn))
 
 (define registered-requests
   (list
