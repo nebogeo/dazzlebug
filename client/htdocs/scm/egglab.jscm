@@ -693,7 +693,7 @@
    (game-modify-render
     (lambda (ctx)
       (set! ctx.font "normal 30pt 'Press Start 2P'")
-      (wrap-text ctx "Generating camouflage... GET READY TO PLAY!" 0 250 600 30))
+      (wrap-text ctx "Generating camouflage... GET READY TO PLAY!" 0 250 600 60))
     (game-modify-buttons (list) c))))
 
 (define (nightjar-thanks c)
