@@ -25,7 +25,7 @@
 
 (define egg-images
   (append
-   (build-list 25 (lambda (i) (+ "themes/huge/" (+ i 1) ".png")))
+   (build-list 42 (lambda (i) (+ "themes/huge/" (+ i 1) ".png")))
    (map
     (lambda (s)
       (+ "themes/huge/" s))

@@ -19,7 +19,7 @@
 
 (define num-eggs-total 20)
 (define num-eggs-from-population 20)
-(define num-best-eggs 16)
+(define num-best-eggs 32)
 (define selection-pop-size 256)
 (define photo-time-allowed 600)
 
@@ -102,8 +102,8 @@
      (let ((program (car sample))
            (fitness (cadr sample))
            (id (list-ref sample 2)))
-       (let ((x (modulo i 4)) (y (Math.floor (/ i 4))))
-         (let ((xx (+ 80 (* x 90)))
+       (let ((x (modulo i 8)) (y (Math.floor (/ i 8))))
+         (let ((xx (- (* x 90) 100))
                (yy (+ 150 (* y 120))))
            (list
             (make-individual
@@ -789,7 +789,7 @@
        (lambda (i ch)
          (let ((x (+ 100 (* (modulo i 10) 105)))
                (y (+ 400 (* (Math.floor (/ i 10)) 130))))
-           (image-button ch x y #f (find-image "button.png")
+           (image-button ch x y #f (find-image "button-small.png")
                          (lambda (c) (type-username ch c)))))
        (list "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M"
              "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
@@ -1117,7 +1117,7 @@
       (lambda (c)
         (nightjar-test c replicate egg ancestors eggs image genome
                        (build-list
-                        28
+                        (* 8 7)
                         (lambda (i)
                           (egg-drawable (egg-mutate genome (calc-mutation-rate)) #f))
                         ))))
@@ -1134,8 +1134,8 @@
      (index-for-each
       (lambda (i egg)
         (ctx.drawImage egg
-                       (+ 250 (* 100 (modulo i 7)))
-                       (+ 150 (* 130 (Math.floor (/ i 7))))))
+                       (+ 200 (* 100 (modulo i 8)))
+                       (+ 100 (* 100 (Math.floor (/ i 8))))))
       vars)
      ;;(draw-egg-family-tree ctx ancestors eggs)
      (ctx.fillText "Mutation test" 20 50))
@@ -1201,6 +1201,7 @@
    "browser-check.png"
    "facebook.png"
    "twitter.png"
+   "button-small.png"
    )
   egg-images)
  (lambda ()
