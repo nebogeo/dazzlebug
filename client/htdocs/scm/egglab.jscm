@@ -176,14 +176,14 @@
     (set! canvas.width screen-width)
     (set! canvas.height screen-height)
     (let ((ctx (canvas.getContext "2d")))
+      (ctx.beginPath)
+      (ctx.arc centrex centrey 500 0 (* 2 Math.PI) #f)
+      (set! ctx.fillStyle "#777")
+      (ctx.fill)
       (inner-draw-genome ctx egg centrex centrey 0 0 (* 2 3.141) 65)
       (set! ctx.fillStyle "#000"))
     canvas))
 
-;;      (ctx.beginPath)
-;;      (ctx.arc centrex centrey 500 0 (* 2 Math.PI) #f)
-;;      (set! ctx.fillStyle "#777")
-;;      (ctx.fill)
 
 (define (render-egg-family-tree ancestors)
   (map
