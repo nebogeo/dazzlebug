@@ -26,7 +26,7 @@
 (define num-eggs-from-population 20)
 (define num-best-eggs 32)
 (define selection-pop-size 256)
-(define photo-time-allowed 600)
+(define photo-time-allowed 5)
 
 (define (make-individual id fitness ancestral-fitness generation parent drawable egg pos phase)
   (list id fitness ancestral-fitness generation parent drawable egg pos phase))
