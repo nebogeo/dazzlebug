@@ -950,8 +950,7 @@
 
 (define (button-jitter-direction b c)
   (animated-button-modify-dir
-   b
-   (v2drot (animated-button-dir b) (random-range -90 90))))
+   b (v2drot (animated-button-dir b) (random-range -90 90))))
 
 (define (button-do-direction b c)
   (if (> (animated-button-time b) 0.5)
@@ -966,17 +965,13 @@
     (let ((pos (individual-pos egg)))
       (animated-button
        "" (car pos) (cadr pos)
-       (vector
-        (random-range -500 500)
-        (random-range -500 500) 0)
+       (hcrndvec 300)
        #f (individual-drawable egg)
-
        ;; animate function
        (lambda (b)
          (button-move-bounce
-          (button-do-direction b c) c)
-         )
-
+          (button-do-direction b c) c))
+       ;; clicked function
        (lambda (c)
          (submit-egg egg c)
          (let ((t (seconds-taken c)))
