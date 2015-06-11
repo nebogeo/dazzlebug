@@ -33,6 +33,9 @@
 
 (define (rndf) (Math.random))
 
+(define (max a b) (if (> a b) a b))
+(define (min a b) (if (< a b) a b))
+
 ;; replaced by underlying iterative version
 ;;(define foldl
 ;;  (lambda (fn v l)
@@ -46,6 +49,13 @@
      (lambda (i r)
        (append r (list (fn i))))
      () l)))
+
+(define map2
+  (lambda (fn l l2)
+    (foldl
+     (lambda (a b r)
+       (append r (list (fn a b))))
+     () l l2)))
 
 (define filter
   (lambda (fn l)
@@ -62,7 +72,24 @@
      ()
      l) #f))
 
+(define (assoc k l)
+  (foldl
+   (lambda (i r)
+     (if (eq? (car i) k) i r))
+   #f l))
+
 ;; index versions provide count for first argument
+
+(define index-foldl
+  (lambda (fn s l)
+    (cadr (foldl
+           (lambda (e r)
+             (list
+              (+ (car r) 1)
+              (fn (car r) e (cadr r))))
+           (list 0 s)
+           l))))
+
 
 (define index-map
   (lambda (fn l)
@@ -84,6 +111,7 @@
 
 ;; fix js modulo irt negative numbers
 (define (modulo m n) (js "((m%n)+n)%n"))
+(define (quotient m n) (Math.floor (/ m n)))
 
 (define (sin a) (Math.sin a))
 (define (cos a) (Math.cos a))
@@ -131,19 +159,34 @@
       (cdr l)
       (append (list (car l)) (delete-n (cdr l) (- n 1)))))
 
-(define shuffle
-  (lambda (l)
-    (if (< (length l) 2)
-        l
-        (let ((item (random (length l))))
-          (cons (list-ref l item)
-                (shuffle (delete-n l item)))))))
+(define (shuffle l)
+  (cond ((null? l) ())
+        ((< (length l) 2)
+         (list (car l)))
+        (else
+         (let ((item (random (length l))))
+           (cons (list-ref l item)
+                 (shuffle (delete-n l item)))))))
 
 (define (crop l n)
   (cond
    ((null? l) ())
    ((zero? n) ())
    (else (cons (car l) (crop (cdr l) (- n 1))))))
+
+;; return (picked left-over)
+(define (pick-out-of l n)
+  (define (_ p l n)
+    (cond
+      ((or (null? l) (zero? n))
+       (list p l))
+      (else
+       (let ((item (random (length l))))
+         (_
+          (cons (list-ref l item) p)
+          (delete-n l item)
+          (- n 1))))))
+  (_ () l n))
 
 (define factorial
   (lambda (n)
@@ -202,6 +245,8 @@
     (when (not (list-equal? (cons 1 (list 2 3)) (list 1 2 3))) (display "cons failed"))
     (when (not (eq? (foldl (lambda (a r) (+ a r)) 0 (list 1 2 1 1)) 5))
           (display "fold failed"))
+    (when (not (eq? (foldl (lambda (a b r) (+ a b r)) 0 (list 1 2 1 1) (list 2 2 5 5)) 19))
+          (display "fold multiple failed"))
     (when (not (list-equal? (map (lambda (i) (+ i 1)) (list 1 2 3 4)) (list 2 3 4 5)))
           (display "map failed"))
     (when (not (eq? (let ((a 1) (b 2) (c 3)) (+ a b c)) 6)) (display "let failed"))
@@ -214,6 +259,8 @@
     (when (eq? (not (+ 200 3)) 203) (display "+ failed"))
     (when (not (eq? (cond (#t (+ 3 2) (+ 100 1)) (else (+ 4 3))) 101)) (display "cond test failed"))
     (when (not (eq? (when #t (+ 3 2) (+ 100 1)) 101)) (display "when test failed"))
+    (when (not (eq? (cadr (assoc 2 (list (list 3 "one") (list 2 "three")))) "three")) (display "assoc test failed"))
+
     ))
 
 (unit-test)

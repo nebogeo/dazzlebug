@@ -17,6 +17,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gp
 
+(load "scm/nightjar.jscm")
+(load "scm/egglab-common.jscm")
+
 (define num-eggs-total 20)
 (define num-eggs-from-population 20)
 (define num-best-eggs 32)
@@ -930,6 +933,33 @@
      (choose (list "Try harder" "Could do better" "Mouse problem?" "Looking the other way?"))
      ))))
 
+;(define (normalise-direction d)
+;  (vnormalise (vector (vx d) (vy d) 0)))
+
+(define (button-move-bounce b c)
+  (button-bounce
+   (button-modify-y
+    (button-modify-x
+     b (+ (button-x b)
+          (* (animated-button-dx b) (game-delta c))))
+    (+ (button-y b)
+       (* (animated-button-dy b) (game-delta c))))))
+
+
+(define (button-jitter-direction b c)
+  (animated-button-modify-dx
+   (animated-button-modify-dy
+    b (random-range -500 500))
+   (random-range -500 500)))
+
+(define (button-do-direction b c)
+  (if (> (animated-button-time b) 2)
+      (animated-button-modify-time
+       (button-jitter-direction b c)
+       0)
+      (animated-button-modify-time
+       b (+ (animated-button-time b) (game-delta c)))))
+
 (define (flicker-build-egg c)
   (let ((egg (car (egglab-data-eggs (game-data c)))))
     (let ((pos (individual-pos egg)))
@@ -938,6 +968,13 @@
        (random-range -500 500)
        (random-range -500 500) #f
        (individual-drawable egg)
+
+       ;; animate function
+       (lambda (b)
+         (button-move-bounce
+          (button-do-direction b c) c)
+         )
+
        (lambda (c)
          (submit-egg egg c)
          (let ((t (seconds-taken c)))

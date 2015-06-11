@@ -1,4 +1,4 @@
-// Ditto Copyright (C) 2014 Dave Griffiths
+// Planet Fluxus Copyright (C) 2013 Dave Griffiths
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as
@@ -14,18 +14,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ///////////////////////////////////////////////////////////////////////////
 
-// a pretty rubbish scheme compiler for javascript
-// works 'just well enough' for now, but no better
-
-// Ditto (Japanese: メタモン Metamon) is a Normal-type Pokémon. It is not
-// known to evolve into or from any other Pokémon. Ditto uses the move
-// Transform to copy the opponent's moves, types, form, and non-HP
-// stats. It can breed with any Pokémon other than the Pokémon in the
-// Undiscovered group and itself, including male Pokémon and some
-// genderless Pokémon, to produce Eggs of the other's species.
-
-// In the Pokemon universe, it is possible that Ditto is a form of
-// programmable matter.
+// a scheme compiler for javascript
 
 var ditto = {};
 
@@ -73,9 +62,12 @@ ditto.parse_tree = function(str) {
             } else if (!white_space(str[i]) &&
                        str[i]!=")") {
                 state="token";
-                current_token+=str[i];
-                if (str[i]==="\"") in_quotes = true;
-                if (str[i]===";") in_comment = true;
+                if (str[i]===";") {
+                    in_comment = true;
+                } else {
+                    current_token+=str[i];
+                    if (str[i]==="\"") in_quotes = true;
+                }
             }
         } break;
 
@@ -95,8 +87,9 @@ ditto.parse_tree = function(str) {
                       str[i]==="\n"))) {
                     state="none";
                     if (in_quotes) {
+                        //console.log(current_token);
                         ret.push(current_token+"\"");
-                        in_quotes=false;
+                    in_quotes=false;
                     } else {
                         if (current_token!="") {
                             if (current_token=="#t") current_token="true";
@@ -107,12 +100,10 @@ ditto.parse_tree = function(str) {
                     current_token="";
                 } else {
                     if (in_quotes) {
-                        if (str[i]=="\\") {
-                            // don't interpret what ever's next, take it literally!
-                            current_token+=str[i];
-                            i++;
-                        }
-                        current_token+=str[i];
+                        // escape newlines in quotes
+
+                        if (str[i]=="\n") current_token+=("\\"+str[i]);
+                        else current_token+=str[i];
                     } else {
                         switch (str[i]) {
                         case "-":
@@ -197,8 +188,9 @@ ditto.check = function(fn,args,min,max) {
     return true;
 };
 
-// ( (arg1 arg2 ...) body ...)
+// generate code
 
+// ( (arg1 arg2 ...) body ...)
 ditto.comp_lambda = function(args) {
     var expr=ditto.cdr(args);
     var nexpr=expr.length;
@@ -207,7 +199,7 @@ ditto.comp_lambda = function(args) {
 
     return "function ("+ditto.car(args).join()+")\n"+
         // adding semicolon here
-        "{"+ditto.list_map(ditto.comp,eexpr).join(";\n")+"\n"+
+        "{\n"+ditto.list_map(ditto.comp,eexpr).join(";\n")+"\n"+
         "return "+ditto.comp(last)+"\n}\n";
 };
 
@@ -221,7 +213,7 @@ ditto.comp_begin = function(args) {
 
     return "function ()\n"+
         // adding semicolon here
-        "{"+ditto.list_map(ditto.comp,eexpr).join(";\n")+"\n"+
+        "{\n"+ditto.list_map(ditto.comp,eexpr).join(";\n")+"\n"+
         "return "+ditto.comp(last)+"\n}\n";
 }
 
@@ -240,9 +232,9 @@ ditto.comp_let = function(args) {
 
 ditto.comp_cond = function(args) {
     if (ditto.car(ditto.car(args))==="else") {
-        return "(function () { return "+ditto.comp_let([[]].concat(ditto.cdr(ditto.car(args))))+"})()";
+        return "(function () { \nreturn "+ditto.comp_let([[]].concat(ditto.cdr(ditto.car(args))))+"})()";
     } else {
-        return "(function () { if ("+ditto.comp(ditto.car(ditto.car(args)))+") {\n"+
+        return "(function () { \nif ("+ditto.comp(ditto.car(ditto.car(args)))+") {\n"+
             // todo: decide if lambda, let or begin is canonical way to do this...
             "return "+ditto.comp_let([[]].concat(ditto.cdr(ditto.car(args))))+
             "\n} else {\n"+
@@ -251,19 +243,34 @@ ditto.comp_cond = function(args) {
 };
 
 ditto.comp_if = function(args) {
-    return "(function () { if ("+ditto.comp(ditto.car(args))+") {\n"+
-        "return "+ditto.comp(ditto.cadr(args))+"} else {"+
+    return "(function () { \nif ("+ditto.comp(ditto.car(args))+") {\n"+
+        "return "+ditto.comp(ditto.cadr(args))+"\n} else {\n"+
         "return "+ditto.comp(ditto.caddr(args))+"}})()";
 };
 
 ditto.comp_when = function(args) {
-    return "(function () { if ("+ditto.comp(ditto.car(args))+") {\n"+
+    return "(function () { \nif ("+ditto.comp(ditto.car(args))+") {\n"+
         "return ("+ditto.comp_lambda([[]].concat(ditto.cdr(args)))+")() }})()";
 };
 
-ditto.foldl_helper = function(fn,val,src) {
+ditto.foldl_single_helper = function(fn,val,src) {
     for (var i=0; i<src.length; i++) {
         val=fn(src[i],val);
+    }
+    return val;
+};
+
+ditto.foldl_helper = function(args) {
+    var fn=args[0];
+    var val=args[1];
+    var src=args[2];
+    for (var i=0; i<src.length; i++) {
+        slice = [];
+        for(var j=2; j<args.length; j++) {
+            slice.push(args[j][i]);
+        }
+        slice.push(val);
+        val=fn.apply(this,slice);
     }
     return val;
 };
@@ -282,28 +289,32 @@ ditto.list_replace_helper = function(l,index,val) {
 };
 
 ditto.core_forms = function(fn, args) {
+
+//    var debug = "// generating: "+fn+"\n";
+    var debug = "/* "+fn+" */ ";
+
     // core forms
-    if (fn == "lambda") if (ditto.check(fn,args,2,-1)) return ditto.comp_lambda(args);
-    if (fn == "if") if (ditto.check(fn,args,3,3)) return ditto.comp_if(args);
-    if (fn == "when") if (ditto.check(fn,args,2,-1)) return ditto.comp_when(args);
-    if (fn == "cond") if (ditto.check(fn,args,2,-1)) return ditto.comp_cond(args);
-    if (fn == "let") if (ditto.check(fn,args,2,-1)) return ditto.comp_let(args);
+    if (fn == "lambda") if (ditto.check(fn,args,2,-1)) return debug+ditto.comp_lambda(args);
+    if (fn == "if") if (ditto.check(fn,args,3,3)) return debug+ditto.comp_if(args);
+    if (fn == "when") if (ditto.check(fn,args,2,-1)) return debug+ditto.comp_when(args);
+    if (fn == "cond") if (ditto.check(fn,args,2,-1)) return debug+ditto.comp_cond(args);
+    if (fn == "let") if (ditto.check(fn,args,2,-1)) return debug+ditto.comp_let(args);
 
     if (fn == "define") {
         // adding semicolon here
-        if (ditto.check(fn,args,2,-1)) return "var "+ditto.car(args)+" = "+ditto.comp(ditto.cdr(args))+";";
+        if (ditto.check(fn,args,2,-1)) return debug+"var "+ditto.car(args)+" = "+ditto.comp(ditto.cdr(args))+";";
     }
 
     if (fn == "list") {
-        return "["+ditto.list_map(ditto.comp,args).join(",")+"]";
+        return debug+"["+ditto.list_map(ditto.comp,args).join(",")+"]";
     }
 
     if (fn == "begin") {
-        return "("+ditto.comp_lambda([[]].concat(args))+")()";
+        return debug+"("+ditto.comp_lambda([[]].concat(args))+")()";
     }
 
     if (fn == "list_ref") {
-        if (ditto.check(fn,args,2,2)) return ditto.comp(ditto.car(args))+"["+ditto.comp(ditto.cadr(args))+"]";
+        if (ditto.check(fn,args,2,2)) return debug+ditto.comp(ditto.car(args))+"["+ditto.comp(ditto.cadr(args))+"]";
     }
 
     if (fn == "list_replace") {
@@ -325,50 +336,52 @@ ditto.core_forms = function(fn, args) {
     // todo - make general for multiple lists as input
     // iterative fold version for optimisation
     if (fn == "foldl") {
-        if (ditto.check(fn,args,3,3)) {
-            return "ditto.foldl_helper("+ditto.comp(ditto.car(args))+","+
-                ditto.comp(ditto.cadr(args))+","+
-                ditto.comp(ditto.caddr(args))+")";
-        }
+        if (args.length==3)
+            return "ditto.foldl_single_helper("+
+            ditto.comp(ditto.car(args))+","+
+            ditto.comp(ditto.cadr(args))+","+
+            ditto.comp(ditto.caddr(args))+")";
+        else
+            return "ditto.foldl_helper(["+ditto.list_map(ditto.comp,args).join(",")+"])";
     }
 
     if (fn == "list_q") {
         if (ditto.check(fn,args,1,1))
-            return "(Object.prototype.toString.call("+
+            return debug+"(Object.prototype.toString.call("+
             ditto.comp(ditto.car(args))+") === '[object Array]')";
     }
 
     if (fn == "number_q") {
         if (ditto.check(fn,args,1,1))
-            return "(typeof "+ditto.comp(ditto.car(args))+" === 'number')";
+            return debug+"(typeof "+ditto.comp(ditto.car(args))+" === 'number')";
     }
 
     if (fn == "boolean_q") {
         if (ditto.check(fn,args,1,1))
-            return "(typeof "+ditto.comp(ditto.car(args))+" === 'boolean')";
+            return debug+"(typeof "+ditto.comp(ditto.car(args))+" === 'boolean')";
     }
 
     if (fn == "string_q") {
         if (ditto.check(fn,args,1,1))
-            return "(typeof "+ditto.comp(ditto.car(args))+" === 'string')";
+            return debug+"(typeof "+ditto.comp(ditto.car(args))+" === 'string')";
     }
 
     if (fn == "length") {
-        if (ditto.check(fn,args,1,1)) return ditto.comp(ditto.car(args))+".length";
+        if (ditto.check(fn,args,1,1)) return debug+ditto.comp(ditto.car(args))+".length";
     }
 
     if (fn == "null_q") {
-        if (ditto.check(fn,args,1,1)) return "("+ditto.comp(ditto.car(args))+".length==0)";
+        if (ditto.check(fn,args,1,1)) return debug+"("+ditto.comp(ditto.car(args))+".length==0)";
     }
 
     if (fn == "not") {
         if (ditto.check(fn,args,1,1))
-            return "!("+ditto.comp(ditto.car(args))+")";
+            return debug+"!("+ditto.comp(ditto.car(args))+")";
     }
 
     if (fn == "cons") {
         if (ditto.check(fn,args,2,2))
-            return "["+ditto.comp(ditto.car(args))+"].concat("+ditto.comp(ditto.cadr(args))+")";
+            return debug+"["+ditto.comp(ditto.car(args))+"].concat("+ditto.comp(ditto.cadr(args))+")";
     }
 
     if (fn == "append") {
@@ -377,33 +390,33 @@ ditto.core_forms = function(fn, args) {
             for (var i=1; i<args.length; i++) {
                 r+=".concat("+ditto.comp(args[i])+")";
             }
-            return r;
+            return debug+r;
         }
     }
 
     if (fn == "car") {
         if (ditto.check(fn,args,1,1))
-            return ditto.comp(ditto.car(args))+"[0]";
+            return debug+ditto.comp(ditto.car(args))+"[0]";
     }
 
     if (fn == "cadr") {
         if (ditto.check(fn,args,1,1))
-            return ditto.comp(ditto.car(args))+"[1]";
+            return debug+ditto.comp(ditto.car(args))+"[1]";
     }
 
     if (fn == "caddr") {
         if (ditto.check(fn,args,1,1))
-            return ditto.comp(ditto.car(args))+"[2]";
+            return debug+ditto.comp(ditto.car(args))+"[2]";
     }
 
     if (fn == "cdr") {
         if (ditto.check(fn,args,1,1))
-            return "ditto.sublist("+ditto.comp(ditto.car(args))+",1)";
+            return debug+"ditto.sublist("+ditto.comp(ditto.car(args))+",1)";
     }
 
     if (fn == "eq_q") {
         if (ditto.check(fn,args,2,2))
-            return ditto.comp(ditto.car(args))+"=="+
+            return debug+ditto.comp(ditto.car(args))+"=="+
             ditto.comp(ditto.cadr(args));
     }
 
@@ -423,43 +436,42 @@ ditto.core_forms = function(fn, args) {
                  ["or","||"]];
 
     for (var i=0; i<infix.length; i++) {
-        if (fn == infix[i][0]) return ditto.infixify(infix[i][1],args);
+        if (fn == infix[i][0]) return debug+ditto.infixify(infix[i][1],args);
     }
 
     if (fn == "set_e") {
         if (ditto.check(fn,args,2,2))
-            return ditto.comp(ditto.car(args))+"="+ditto.comp(ditto.cadr(args));
+            return debug+ditto.comp(ditto.car(args))+"="+ditto.comp(ditto.cadr(args));
     }
 
     if (fn == "try") {
         if (ditto.check(fn,args,2,2))
-            return "try {"+ditto.comp(ditto.car(args))+"} catch (e) { "+ditto.comp(ditto.cadr(args))+" }";
+            return debug+"try {"+ditto.comp(ditto.car(args))+"} catch (e) { "+ditto.comp(ditto.cadr(args))+" }";
     }
 
-/*    // heart of darkness
+    // heart of darkness
     if (fn == "eval_string") {
         if (ditto.check(fn,args,1,1))
-            return "eval(ditto.comp(ditto.parse_tree("+ditto.comp(ditto.car(args))+")))";
+            return debug+"eval(ditto.comp(ditto.parse_tree("+ditto.comp(ditto.car(args))+")))";
     }
-
-    // semi-heart of darkness
-    if (fn == "string_to_sexpr") {
-        if (ditto.check(fn,args,1,1))
-            return "ditto.comp(ditto.parse_tree("+ditto.comp(ditto.car(args))+"))";
-    }
-*/
 
     // js intrinsics
     if (fn == "js") {
         if (ditto.check(fn,args,1,1)) {
             var v=ditto.car(args);
             // remove the quotes to insert the literal string
-            return v.substring(1,v.length-1);
+            return debug+v.substring(1,v.length-1);
         }
     }
 
     if (fn == "new") {
-        return "new "+ditto.car(args)+"( "+ditto.comp(ditto.cadr(args))+")";
+        return debug+"new "+ditto.car(args)+"( "+ditto.comp(ditto.cadr(args))+")";
+    }
+
+    if (fn == "load") {
+        var v=ditto.comp(ditto.car(args));
+        console.log("loading "+v);
+        return ditto.load(v.substring(1,v.length-1));
     }
 
     return false;
@@ -486,7 +498,7 @@ ditto.is_number = function(str) {
 };
 
 ditto.comp = function(f) {
-//    console.log(f);
+    //    console.log(f);
     try {
         // string, number or list?
         if (typeof f == "string") return f;
@@ -558,6 +570,7 @@ ditto.to_page = function(id,html)
     document.getElementById(id).appendChild(div);
 };
 
+
 function init(filenames) {
 
     jQuery(document).ready(function($) {
@@ -574,27 +587,20 @@ function init(filenames) {
         }
 
         var js=ditto.load("scm/base.jscm");
-        console.log("pre-eval scm/base.jscm");
-        eval(js);
-        js+=ditto.load("scm/nightjar.jscm");
-        console.log("pre-eval scm/nighjar.jscm");
-        eval(js);
+
         filenames.forEach(function(filename) {
             js+=ditto.load(filename);
-            console.log("pre-eval "+filename);
-            eval(js);
         });
 
         try {
-//            eval(js);
+            eval(js);
         } catch (e) {
-            console.log("An error occured parsing "+js);
+            //console.log("An error occured parsing "+js);
             console.log(e);
             console.log(e.stack);
         }
     });
 }
-
 
 /**
  * Provides requestAnimationFrame in a cross browser way.
@@ -609,9 +615,6 @@ function init(filenames) {
     window.setTimeout(callback, 1000/60);    };
     })();
 
-// I found it on the internet...
-function getURLParameter(name) {
-    return decodeURI(
-        (RegExp(name + '=' + '(.+?)(&|$)').exec(location.search)||[,null])[1]
-    );
+function do_confirm() {
+    return confirm("Are you sure?");
 }
