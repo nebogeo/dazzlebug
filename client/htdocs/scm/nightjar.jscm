@@ -190,7 +190,7 @@
         (rndf)
         #f))
 
-(define (animated-button name x y dx dy jitter drawable animate-callback callback)
+(define (animated-button name x y dir jitter drawable animate-callback callback)
   (list "animated-button"
         name
         (- x (/ drawable.width 2))
@@ -200,19 +200,17 @@
         jitter callback drawable
         (rndf)
         #f
-        dx dy
+        dir
         animate-callback
         0))
 
-(define (animated-button-dx b) (list-ref b 11))
-(define (animated-button-dy b) (list-ref b 12))
 (define (button-modify-x b v) (list-replace b 2 v))
 (define (button-modify-y b v) (list-replace b 3 v))
-(define (animated-button-modify-dx b v) (list-replace b 11 v))
-(define (animated-button-modify-dy b v) (list-replace b 12 v))
-(define (animated-button-callback b) (list-ref b 13))
-(define (animated-button-time b) (list-ref b 14))
-(define (animated-button-modify-time b v) (list-replace b 14 v))
+(define (animated-button-dir b) (list-ref b 11))
+(define (animated-button-modify-dir b v) (list-replace b 11 v))
+(define (animated-button-callback b) (list-ref b 12))
+(define (animated-button-time b) (list-ref b 13))
+(define (animated-button-modify-time b v) (list-replace b 13 v))
 
 (define (circle-button name x y r callback)
   (list "circle-button" name x y r r #f callback #f (rndf) #f))
@@ -399,8 +397,8 @@
   (ctx.translate (button-x b) (button-y b))
 
   (ctx.translate 64 64)
-  (ctx.rotate (Math.atan2 (animated-button-dy b)
-                          (animated-button-dx b)))
+  (ctx.rotate (Math.atan2 (vy (animated-button-dir b))
+                          (vx (animated-button-dir b))))
   (ctx.translate -64 -64)
 
   (button-do-jittering b t)
@@ -546,28 +544,29 @@
 ;; ----------------------------------------
 
 (define (button-bounce b)
-  (cond
-   ((< (button-x b) 0)
-    (button-modify-x
-     (animated-button-modify-dx
-      b (- 0 (animated-button-dx b)))
-     0))
-   ((< (button-y b) 0)
-    (button-modify-y
-     (animated-button-modify-dy
-      b (- 0 (animated-button-dy b)))
-     0))
-    ((> (+ (button-x b) (button-w b)) screen-width)
-     (button-modify-x
-      (animated-button-modify-dx
-       b (- 0 (animated-button-dx b)))
-      (- screen-width (button-w b))))
-   ((> (+ (button-y b) (button-w b)) screen-height)
-    (button-modify-y
-     (animated-button-modify-dy
-      b (- 0 (animated-button-dy b)))
-     (- screen-height (button-h b))))
-   (else b)))
+  (let ((d (animated-button-dir b)))
+    (cond
+     ((< (button-x b) 0)
+      (button-modify-x
+       (animated-button-modify-dir
+        b (vector (- 0 (vx d)) (vy d)))
+       0))
+     ((< (button-y b) 0)
+      (button-modify-y
+       (animated-button-modify-dir
+        b (vector (vx d) (- 0 (vy d))))
+       0))
+     ((> (+ (button-x b) (button-w b)) screen-width)
+      (button-modify-x
+       (animated-button-modify-dir
+        b (vector (- 0 (vx d)) (vy d)))
+       (- screen-width (button-w b))))
+     ((> (+ (button-y b) (button-w b)) screen-height)
+      (button-modify-y
+       (animated-button-modify-dir
+        b (vector (vx d) (- 0 (vy d))))
+       (- screen-height (button-h b))))
+     (else b))))
 
 (define (game-animate-buttons game)
   (game-modify-buttons

@@ -17,6 +17,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gp
 
+(load "scm/maths.jscm")
+(load "scm/random.jscm")
 (load "scm/nightjar.jscm")
 (load "scm/egglab-common.jscm")
 
@@ -933,27 +935,26 @@
      (choose (list "Try harder" "Could do better" "Mouse problem?" "Looking the other way?"))
      ))))
 
-;(define (normalise-direction d)
-;  (vnormalise (vector (vx d) (vy d) 0)))
+(define (normalise-direction d)
+  (vnormalise (vector (vx d) (vy d) 0)))
 
 (define (button-move-bounce b c)
   (button-bounce
    (button-modify-y
     (button-modify-x
      b (+ (button-x b)
-          (* (animated-button-dx b) (game-delta c))))
+          (* (vx (animated-button-dir b)) (game-delta c))))
     (+ (button-y b)
-       (* (animated-button-dy b) (game-delta c))))))
+       (* (vy (animated-button-dir b)) (game-delta c))))))
 
 
 (define (button-jitter-direction b c)
-  (animated-button-modify-dx
-   (animated-button-modify-dy
-    b (random-range -500 500))
-   (random-range -500 500)))
+  (animated-button-modify-dir
+   b
+   (v2drot (animated-button-dir b) (random-range -90 90))))
 
 (define (button-do-direction b c)
-  (if (> (animated-button-time b) 2)
+  (if (> (animated-button-time b) 0.5)
       (animated-button-modify-time
        (button-jitter-direction b c)
        0)
@@ -965,9 +966,10 @@
     (let ((pos (individual-pos egg)))
       (animated-button
        "" (car pos) (cadr pos)
-       (random-range -500 500)
-       (random-range -500 500) #f
-       (individual-drawable egg)
+       (vector
+        (random-range -500 500)
+        (random-range -500 500) 0)
+       #f (individual-drawable egg)
 
        ;; animate function
        (lambda (b)
