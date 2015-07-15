@@ -702,49 +702,52 @@
     (game-modify-buttons (list) c))))
 
 (define (nightjar-thanks c)
-  (game-modify-update
-   (lambda (t c) c)
-   (game-modify-render
-    (lambda (ctx)
-      (set! ctx.font "normal 30pt 'Press Start 2P'")
-      (wrap-text ctx "Thanks for playing! With your help the eggs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
+  (stop-sound "idle-01.wav")
+  (game-modify-mouse-hook
+   (lambda (type c) c)
+   (game-modify-update
+    (lambda (t c) c)
+    (game-modify-render
+     (lambda (ctx)
+       (set! ctx.font "normal 30pt 'Press Start 2P'")
+       (wrap-text ctx "Thanks for playing! With your help the eggs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
 
-      (text-flashy-render ctx (string-append "Your average time was: "
-                                    (time-to-seconds (egglab-data-player-time (game-data c)))
-                                    " seconds.")
-                          225 400 (game-time c))
+       (text-flashy-render ctx (string-append "Your average time was: "
+                                              (time-to-seconds (egglab-data-player-time (game-data c)))
+                                              " seconds.")
+                           225 400 (game-time c))
 
-      (set! ctx.font "normal 15pt 'Press Start 2P'"))
+       (set! ctx.font "normal 15pt 'Press Start 2P'"))
 
-    (game-modify-postrender
-     (lambda (ctx) 0)
-     (game-modify-buttons
-      (list
+     (game-modify-postrender
+      (lambda (ctx) 0)
+      (game-modify-buttons
+       (list
 
-       (image-button "" 200 600 "none" (find-image "twitter.png")
-                     (lambda (c)
-                       (set! window.location "https://twitter.com/ProjectNightjar") c))
+        (image-button "" 200 600 "none" (find-image "twitter.png")
+                      (lambda (c)
+                        (set! window.location "https://twitter.com/ProjectNightjar") c))
 
-       (image-button "" 1000 600 "none" (find-image "facebook.png")
-                     (lambda (c)
-                       (set! window.location "https://www.facebook.com/SensoryEcology") c))
+        (image-button "" 1000 600 "none" (find-image "facebook.png")
+                      (lambda (c)
+                        (set! window.location "https://www.facebook.com/SensoryEcology") c))
 
-       (image-button
-        "Continue" (/ screen-width 2) 600 "jumpy" (find-image "button.png")
-        (lambda (c)
-          (if (eq? (egglab-data-username (game-data c)) "???")
-              (nightjar-enter-name c)
-              (begin
-                (server-call
-                 "add-score"
-                 (list
-                  (list "player-id" (egglab-data-player-id (game-data c)))
-                  (list "name" (egglab-data-username (game-data c)))
-                  (list "score" (egglab-data-player-time (game-data c)))
-                  (list "population" (egglab-data-land (game-data c)))
-                  (list "replicate" (egglab-data-replicate (game-data c)))))
-                (nightjar-env c))))))
-      c)))))
+        (image-button
+         "Continue" (/ screen-width 2) 600 "jumpy" (find-image "button.png")
+         (lambda (c)
+           (if (eq? (egglab-data-username (game-data c)) "???")
+               (nightjar-enter-name c)
+               (begin
+                 (server-call
+                  "add-score"
+                  (list
+                   (list "player-id" (egglab-data-player-id (game-data c)))
+                   (list "name" (egglab-data-username (game-data c)))
+                   (list "score" (egglab-data-player-time (game-data c)))
+                   (list "population" (egglab-data-land (game-data c)))
+                   (list "replicate" (egglab-data-replicate (game-data c)))))
+                 (nightjar-env c))))))
+       c))))))
 
 (define (type-into str ch)
   (car
@@ -917,48 +920,42 @@
   (/ (time-elapsed c) 1000))
 
 (define (result-text t)
-  (cond
-   ((< t 1)
-    (play-sound (string-append "great-" (+ 1 (random 3)) ".wav"))
-    (string-append
-     t " Secs - "
-     (choose (list "Super Reflex" "X-Ray vision!" "Perfect predator" "SO FAST"))))
-   ((and (> t 1) (< t 2))
-    (play-sound (string-append "good-" (+ 1 (random 3)) ".wav"))
-    (string-append
-     t " Secs - "
-     (choose (list "Nice work" "Not too shabby" "Good"))))
-   (else
-    (play-sound (string-append "ok-" (+ 1 (random 3)) ".wav"))
-    (string-append
-     t " Secs - "
-     (choose (list "Try harder" "Could do better" "Mouse problem?" "Looking the other way?"))
-     ))))
+  (play-sound (string-append "splat-" (+ 1 (random 12)) ".wav")))
 
 (define (normalise-direction d)
   (vnormalise (vector (vx d) (vy d) 0)))
 
 (define (button-move-bounce b c)
-  (button-bounce
-   (button-modify-y
-    (button-modify-x
-     b (+ (button-x b)
-          (* (vx (animated-button-dir b)) (game-delta c))))
-    (+ (button-y b)
-       (* (vy (animated-button-dir b)) (game-delta c))))))
+  (let ((speed (if (eq? (animated-button-state b) "panic") 2 1)))
+    (button-bounce
+     (button-modify-y
+      (button-modify-x
+       b (+ (button-x b)
+            (* speed (vx (animated-button-dir b)) (game-delta c))))
+      (+ (button-y b)
+         (* speed (vy (animated-button-dir b)) (game-delta c)))))))
 
 
 (define (button-jitter-direction b c)
   (animated-button-modify-dir
    b (v2drot (animated-button-dir b) (random-range -90 90))))
 
+(define (button-update-state b)
+  (if (eq? (random 100) 0)
+      (begin
+        (play-sound-looped "idle-01.wav")
+        (animated-button-modify-state b ""))
+      b))
+
 (define (button-do-direction b c)
-  (if (> (animated-button-time b) 0.5)
-      (animated-button-modify-time
-       (button-jitter-direction b c)
-       0)
-      (animated-button-modify-time
-       b (+ (animated-button-time b) (game-delta c)))))
+  (button-update-state
+   (if (> (animated-button-time b)
+          (if (eq? (animated-button-state b) "panic") 0.1 0.5))
+       (animated-button-modify-time
+        (button-jitter-direction b c)
+        0)
+       (animated-button-modify-time
+        b (+ (animated-button-time b) (game-delta c))))))
 
 (define (flicker-build-egg c)
   (let ((egg (car (egglab-data-eggs (game-data c)))))
@@ -974,6 +971,8 @@
        ;; clicked function
        (lambda (c)
          (submit-egg egg c)
+         (stop-sound "idle-01.wav")
+
          (let ((t (seconds-taken c)))
            ;; kinda in the constructor for this, but need to get it from the game
            (let ((egg-button (car (game-buttons c))))
@@ -997,24 +996,31 @@
             (+ (game-time c) 500))))))))
 
 (define (nightjar-flicker-game c)
+  (stop-sound "idle-01.wav")
+  (play-sound-looped "idle-01.wav")
   (game-modify-mouse-hook
    (lambda (type c)
      (when (eq? type "down")
            (let ((egg (car (egglab-data-eggs (game-data c))))
                  (egg-button (car (game-buttons c))))
-           (server-call
-            "add-click"
-            (list
-             (list "player_id" (egglab-data-player-id (game-data c)))
-             (list "egg_id" (individual-id egg))
-             (list "mouse_x" (game-mx c))
-             (list "mouse_y" (game-my c))
-             (list "target_x" (button-x egg-button))
-             (list "target_y" (button-y egg-button))
-             (list "target_dir_x" (car (animated-button-dir egg-button)))
-             (list "target_dir_y" (cadr (animated-button-dir egg-button)))
-             (list "success" 0)))))
-     c)
+             (msg "playing...")
+             (play-sound (string-append "shreak-" (+ 1 (random 5)) ".wav"))
+             (stop-sound "idle-01.wav")
+             (server-call
+              "add-click"
+              (list
+               (list "player_id" (egglab-data-player-id (game-data c)))
+               (list "egg_id" (individual-id egg))
+               (list "mouse_x" (game-mx c))
+               (list "mouse_y" (game-my c))
+               (list "target_x" (button-x egg-button))
+               (list "target_y" (button-y egg-button))
+               (list "target_dir_x" (car (animated-button-dir egg-button)))
+               (list "target_dir_y" (cadr (animated-button-dir egg-button)))
+               (list "success" 0)))))
+     (game-modify-buttons
+      (list (animated-button-modify-state (car (game-buttons c)) "panic"))
+      c))
   (game-modify-update
    (lambda (t c)
      (cond
@@ -1223,16 +1229,25 @@
 
 (load-sounds!
  (list
-  "great-1.wav"
-  "great-2.wav"
-  "great-3.wav"
-  "good-1.wav"
-  "good-2.wav"
-  "good-3.wav"
-  "ok-1.wav"
-  "ok-2.wav"
-  "ok-3.wav"
-  "fail.wav"))
+  "splat-1.wav"
+  "splat-2.wav"
+  "splat-3.wav"
+  "splat-4.wav"
+  "splat-5.wav"
+  "splat-6.wav"
+  "splat-7.wav"
+  "splat-8.wav"
+  "splat-9.wav"
+  "splat-10.wav"
+  "splat-11.wav"
+  "splat-12.wav"
+  "shreak-1.wav"
+  "shreak-2.wav"
+  "shreak-3.wav"
+  "shreak-4.wav"
+  "shreak-5.wav"
+  "fail.wav"
+  "idle-01.wav"))
 
 (load-images!
  (append

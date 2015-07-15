@@ -122,7 +122,21 @@
         (let ((snd (find-sound sound)))
           (snd.play))))
 
+(define (play-sound-looped sound)
+  (when (game-mute game)
+        (let ((snd (find-sound sound)))
+          (if (eq? (js "typeof snd.loop") "boolean")
+              (set! snd.loop true)
+              (snd.addEventListener
+               "ended" (lambda ()
+                         (set! snd.currentTime 0)
+                         (snd.play)) #f))
+          (snd.play))))
 
+(define (stop-sound sound)
+  (when (game-mute game)
+        (let ((snd (find-sound sound)))
+          (snd.pause))))
 
 ;; ----------------------------------------
 ;; drawing helpers
@@ -202,7 +216,8 @@
         #f
         dir
         animate-callback
-        0))
+        0
+        ""))
 
 (define (button-modify-x b v) (list-replace b 2 v))
 (define (button-modify-y b v) (list-replace b 3 v))
@@ -211,6 +226,8 @@
 (define (animated-button-callback b) (list-ref b 12))
 (define (animated-button-time b) (list-ref b 13))
 (define (animated-button-modify-time b v) (list-replace b 13 v))
+(define (animated-button-state b) (list-ref b 14))
+(define (animated-button-modify-state b v) (list-replace b 14 v))
 
 (define (circle-button name x y r callback)
   (list "circle-button" name x y r r #f callback #f (rndf) #f))
