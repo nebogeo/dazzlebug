@@ -975,6 +975,21 @@
        (lambda (c)
          (submit-egg egg c)
          (let ((t (seconds-taken c)))
+           ;; kinda in the constructor for this, but need to get it from the game
+           (let ((egg-button (car (game-buttons c))))
+             (server-call
+              "add-click"
+              (list
+               (list "player_id" (egglab-data-player-id (game-data c)))
+               (list "egg_id" (individual-id egg))
+               (list "mouse_x" (game-mx c))
+               (list "mouse_y" (game-my c))
+               (list "target_x" (button-x egg-button))
+               (list "target_y" (button-y egg-button))
+               (list "target_dir_x" (car (animated-button-dir egg-button)))
+               (list "target_dir_y" (cadr (animated-button-dir egg-button)))
+               (list "success" 1))))
+
            (nightjar-flicker-result
             c t (result-text t)
             (list (random-range -200 200) (random-range 200 800))
@@ -982,6 +997,24 @@
             (+ (game-time c) 500))))))))
 
 (define (nightjar-flicker-game c)
+  (game-modify-mouse-hook
+   (lambda (type c)
+     (when (eq? type "down")
+           (let ((egg (car (egglab-data-eggs (game-data c))))
+                 (egg-button (car (game-buttons c))))
+           (server-call
+            "add-click"
+            (list
+             (list "player_id" (egglab-data-player-id (game-data c)))
+             (list "egg_id" (individual-id egg))
+             (list "mouse_x" (game-mx c))
+             (list "mouse_y" (game-my c))
+             (list "target_x" (button-x egg-button))
+             (list "target_y" (button-y egg-button))
+             (list "target_dir_x" (car (animated-button-dir egg-button)))
+             (list "target_dir_y" (cadr (animated-button-dir egg-button)))
+             (list "success" 0)))))
+     c)
   (game-modify-update
    (lambda (t c)
      (cond
@@ -1005,7 +1038,7 @@
      (game-modify-buttons
       (list
        (flicker-build-egg c))
-      c)))))
+      c))))))
 
 (define (nightjar-flicker-result c time text pos dir end-time)
   (game-modify-update

@@ -399,6 +399,7 @@
   (ctx.translate 64 64)
   (ctx.rotate (Math.atan2 (vy (animated-button-dir b))
                           (vx (animated-button-dir b))))
+  (ctx.rotate Math.PI/2)
   (ctx.translate -64 -64)
 
   (button-do-jittering b t)

@@ -26,8 +26,14 @@
   (exec/ignore db "create table egghunt ( id integer primary key autoincrement, background varchar, challenger varchar, message varchar, score integer, timestamp varchar)")
   (exec/ignore db "create table egghunt_egg ( id integer primary key autoincrement, egghunt_id integer, egg_id integer, x integer, y integer)")
   (exec/ignore db "create table high_scores ( id integer primary key autoincrement, player_id int, player_name varchar, average_score real, population varchar, replicate int, generation int )")
-;;  (exec/ignore db "create table egghunt_score ( id integer primary key autoincrement. egghunt_id integer, egg_id integer, est_clicked_time integer)")
+  (exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer )")
+
+  ;;  (exec/ignore db "create table egghunt_score ( id integer primary key autoincrement. egghunt_id integer, egg_id integer, est_clicked_time integer)")
   )
+
+(define (update db)
+  (exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer )"))
+
 
 ;; initialise the state
 (define (check/init-state db population replicate)
@@ -95,6 +101,11 @@
   (insert
    db "insert into egghunt_egg values (NULL, ?, ?, ?, ?)"
    egghunt-id egg-id x y))
+
+(define (insert-performance db player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success)
+  (insert
+   db "insert into performance values (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+   (timestamp-now) player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success))
 
 (define (ms->frac ms)
   (modulo (inexact->exact (round ms)) 1000))
@@ -165,7 +176,9 @@
   (if (file-exists? (string->path db-name))
       (begin
         (display "open existing db")(newline)
-        (open (string->path db-name)))
+        (let ((db (open (string->path db-name))))
+          ;(update db)
+          db))
       (begin
         (display "making new db")(newline)
         (let ((db (open (string->path db-name))))

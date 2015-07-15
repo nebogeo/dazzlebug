@@ -86,6 +86,26 @@
          (escape-quotes genotype))))))))
 
    (register
+    (req 'add-click '(player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success))
+    (lambda (player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success)
+      (syncro
+       (lambda ()
+         (pluto-response
+          (scheme->json
+           (insert-performance
+            db
+            (string->number player_id)
+            (string->number egg_id)
+            (string->number mouse_x)
+            (string->number mouse_y)
+            (string->number target_x)
+            (string->number target_y)
+            (string->number target_dir_x)
+            (string->number target_dir_y)
+            (string->number success))))))))
+
+
+   (register
     (req 'sample '(player-id population replicate count))
     (lambda (player-id population replicate count)
     (syncro
@@ -250,7 +270,7 @@
 
 (define (start request)
   (let ((values (url-query (request-uri request))))
-    (msg values)
+    ;(msg values)
     (if (not (null? values))   ; do we have some parameters?
         (let ((name (assq 'fn values)))
           (if name           ; is this a well formed request?
