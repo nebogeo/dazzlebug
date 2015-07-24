@@ -336,7 +336,7 @@
 (define (egglab-button text x y image tooltip fn)
     (button-modify-mouse-over
      (image-button
-      text x y "slidy" image fn)
+      text x y "jumpy" image fn)
      (lambda (c)
        (game-modify-data
         (lambda (d)

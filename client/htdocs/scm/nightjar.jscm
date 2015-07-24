@@ -490,7 +490,7 @@
   (set! ctx.fillStyle "rgba(1, 0, 0, 0.7)")
   (ctx.fill)
   (set! ctx.lineWidth 4)
-  (set! ctx.strokeStyle "#f00")
+  (set! ctx.strokeStyle "#777")
   (ctx.stroke)
 
   (set! ctx.lineWidth 1)

@@ -300,18 +300,14 @@
   (game-modify-render
    (lambda (ctx)
        (set! ctx.fillStyle "#000")
+       (ctx.drawImage (find-image "intro.png") 20 50)
        (set! ctx.font "normal 40pt 'Press Start 2P'")
-       (wrap-text ctx "See me, click me!" 0 160 1000 60)
-       (set! ctx.font "normal 30pt 'Press Start 2P'")
-       (wrap-text ctx "(extremely beta)" 0 220 1000 60)
-       (set! ctx.font "normal 15pt 'Press Start 2P'")
-       (wrap-text ctx "Catch the rectangles for citizen science camouflage evolution glory. It's fun for the whole family." 0 260 1000 25)
        (set! ctx.font "normal 15pt 'Press Start 2P'")
        )
    (game-modify-buttons
     (list
      (image-button
-      "Sound" 1020 700 "jumpy"
+      "Sound" 1120 700 "jumpy"
       (if (zero? (game-mute c))
           (find-image "mute-off.png")
           (find-image "mute-on.png"))
@@ -327,7 +323,7 @@
          (game-flip-mute c))))
 
      (egglab-button
-      "Play" 600 400 (find-image "bigbutton-1.png")
+      "Play" 600 700 (find-image "button-1.png")
       "Try and find new eggs. Their camouflage changes as people play."
       (lambda (c)
         (async-load-images c "CF" bg_images)
@@ -339,14 +335,14 @@
           c))))
 
      (egglab-button
-      "More info" 600 540 (find-image "bigbutton-2.png")
+      "More info" 350 700 (find-image "button-2.png")
       "Try and find new eggs. Their camouflage changes as people play."
       (lambda (c)
         (nightjar-env c)))
 
 
     (image-button
-     "Browser check" 600 700 "jumpy" (find-image "button.png")
+     "Browser check" 850 700 "jumpy" (find-image "button-3.png")
      (lambda (c)
        c))
 
@@ -423,7 +419,7 @@
      (list
 
       (egglab-button
-       "High Scores" 600 200 (find-image "bigbutton-1.png")
+       "High Scores" 600 200 (find-image "button-1.png")
        "See if you are on the high scores list."
        (lambda (c)
          (server-call-mutate
@@ -435,7 +431,7 @@
          c))
 
       (egglab-button
-       "Most successful patterns" 600 400 (find-image "bigbutton-2.png")
+       "Best patterns" 600 400 (find-image "button-2.png")
        "See my most successful eggs for each species."
        (lambda (c)
          (let ((replicate (random num-replicates)))
@@ -472,7 +468,7 @@
          (nightjar-generating-best-eggs c)))
 
       (egglab-button
-       "Difficulty graph" 600 600 (find-image "bigbutton-1.png")
+       "Difficulty graph" 600 600 (find-image "button-1.png")
        "This shows how my eggs are becoming more difficult to spot."
         (lambda (c)
           (server-call-mutate
@@ -484,7 +480,7 @@
 
 
       (image-button
-       "Play again!" 1100 720 "jumpy" (find-image "button.png")
+       "Play again!" 1100 720 "jumpy" (find-image "button-3.png")
        (lambda (c)
          (async-load-images c "CF" bg_images)
          (nightjar-research
@@ -642,17 +638,18 @@
       (set! ctx.font "normal 30pt 'Press Start 2P'")
       (wrap-text ctx "Are you happy for us to use your timing information?" 0 100 1000 60)
       (set! ctx.font "normal 15pt 'Press Start 2P'")
-      (wrap-text ctx "Try and click on the boxes as fast as you can. Small differences help to make better camouflage patterns." 0 250 600 30)
+      (wrap-text ctx "Try and click on the boxes as fast as you can. Small differences help to make better camouflage patterns." 0 200 600 30)
 
       )
 
     (game-modify-buttons
      (list
 
-      (image-button
-       "" 835 455 "rotate" (find-image "yes.png")
-       (lambda (c)
-         (let ((replicate (random num-replicates)))
+     (egglab-button
+      "Start game!" 600 400 (find-image "button-2.png")
+      "Try and find new eggs. Their camouflage changes as people play."
+      (lambda (c)
+        (let ((replicate (random num-replicates)))
            (server-call-mutate
             "sample"
             (list
@@ -684,9 +681,11 @@
                       c))))))))
          (nightjar-generating-eggs c)))
 
+
+
      (image-button
-      "Back" 1150 720 "jumpy" (find-image "button.png")
-      (lambda (c) (nightjar-choose-location c)))
+      "Back" 600 600 "jumpy" (find-image "button.png")
+      (lambda (c) (nightjar-intro c)))
      )
 
      c))))
@@ -723,14 +722,6 @@
       (lambda (ctx) 0)
       (game-modify-buttons
        (list
-
-        (image-button "" 200 600 "none" (find-image "twitter.png")
-                      (lambda (c)
-                        (set! window.location "https://twitter.com/ProjectNightjar") c))
-
-        (image-button "" 1000 600 "none" (find-image "facebook.png")
-                      (lambda (c)
-                        (set! window.location "https://www.facebook.com/SensoryEcology") c))
 
         (image-button
          "Continue" (/ screen-width 2) 600 "jumpy" (find-image "button.png")
@@ -1252,9 +1243,12 @@
 (load-images!
  (append
   (list
+   "intro.png"
    "button.png"
-   "bigbutton-1.png"
-   "bigbutton-2.png"
+   "button-1.png"
+   "button-2.png"
+   "button-3.png"
+   "button-small.png"
    "play-button.png"
    "mute-on.png"
    "mute-off.png"
@@ -1283,7 +1277,6 @@
    "browser-check.png"
    "facebook.png"
    "twitter.png"
-   "button-small.png"
    )
   egg-images)
  (lambda ()
