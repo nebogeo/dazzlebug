@@ -709,7 +709,7 @@
     (game-modify-render
      (lambda (ctx)
        (set! ctx.font "normal 30pt 'Press Start 2P'")
-       (wrap-text ctx "Thanks for playing! With your help the eggs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
+       (wrap-text ctx "Thanks for playing! With your help the bugs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
 
        (text-flashy-render ctx (string-append "Your average time was: "
                                               (time-to-seconds (egglab-data-player-time (game-data c)))
@@ -917,7 +917,7 @@
   (vnormalise (vector (vx d) (vy d) 0)))
 
 (define (button-move-bounce b c)
-  (let ((speed (if (eq? (animated-button-state b) "panic") 2 1)))
+  (let ((speed 1.5))
     (button-bounce
      (button-modify-y
       (button-modify-x
@@ -927,23 +927,21 @@
          (* speed (vy (animated-button-dir b)) (game-delta c)))))))
 
 
-(define (button-jitter-direction b c)
+(define (button-jitter-direction b)
   (animated-button-modify-dir
    b (v2drot (animated-button-dir b) (random-range -90 90))))
 
 (define (button-update-state b)
-  (if (eq? (random 100) 0)
-      (begin
-        (play-sound-looped "idle-01.wav")
-        (animated-button-modify-state b ""))
+  (if (eq? (animated-button-state b) "panic")
+      (animated-button-modify-state
+       (button-jitter-direction b) "")
       b))
 
 (define (button-do-direction b c)
   (button-update-state
-   (if (> (animated-button-time b)
-          (if (eq? (animated-button-state b) "panic") 0.1 0.5))
+   (if (> (animated-button-time b) 0.5)
        (animated-button-modify-time
-        (button-jitter-direction b c)
+        (button-jitter-direction b)
         0)
        (animated-button-modify-time
         b (+ (animated-button-time b) (game-delta c))))))
