@@ -258,6 +258,30 @@
 
 ;; return a bunch of (id genome) lists for inheritence viz
 
+
+(define (pop-all db population replicate generation)
+  (let ((s (select
+            db (string-append
+                "select e.id, e.genotype, e.parent, e.fitness/e.tests, e.tests from egg as e where "
+                "e.population = ? and "
+                "e.replicate = ? and "
+                "e.generation = ? order by (e.fitness/e.tests) desc")
+            population replicate generation)))
+    (if (null? s)
+        '()
+        (map
+         (lambda (i)
+           (list
+            (vector-ref i 0)
+            (vector-ref i 1)
+            (vector-ref i 2)
+            (vector-ref i 3)
+            (vector-ref i 4)
+            ))
+         (cdr s)))))
+
+
+
 (define (get-individual db id)
   (let ((s (select db "select e.parent, e.genotype, e.generation, (e.fitness/e.tests) from egg as e where e.id = ? " id)))
     (if (null? s)
@@ -293,6 +317,75 @@
          (lambda (i)
            (list (vector-ref i 0) (vector-ref i 1) (vector-ref i 2) (vector-ref i 3)))
          (cdr s)))))
+
+;;;;;
+
+(define (get-genzero db)
+  (let ((s (select db "select e.id from egg as e where e.generation = 0")))
+    (if (null? s)
+        '()
+        (map
+         (lambda (i)
+           (vector-ref i 0))
+         (cdr s)))))
+
+
+(define (get-single db id)
+  (let ((s (select db "select e.id, e.parent, e.genotype, e.generation, (e.fitness/e.tests), population, replicate, x_pos, y_pos, tests, image from egg as e where e.id = ? " id)))
+    (if (null? s)
+        '()
+        (car
+         (map
+          (lambda (i)
+            (list (vector-ref i 0) ; id
+                  (vector-ref i 1) ; parent
+                  (vector-ref i 2) ; geno
+                  (vector-ref i 3) ; generation
+                  (vector-ref i 4) ; fitness
+                  (vector-ref i 5) ; pop
+                  (vector-ref i 6) ; rep
+                  (vector-ref i 7) ; x
+                  (vector-ref i 8) ; y
+                  (vector-ref i 9) ; tests
+                  (vector-ref i 10) ; image
+                  ))
+          (cdr s))))))
+
+
+(define (get-dindividual db id)
+  (let ((s (select db "select e.id, e.parent, e.genotype, e.generation, (e.fitness/e.tests) from egg as e where e.id = ? " id)))
+    (if (null? s)
+        '()
+        (car
+         (map
+          (lambda (i)
+            (list (vector-ref i 0) (vector-ref i 1) (vector-ref i 2) (vector-ref i 3)))
+          (cdr s))))))
+
+(define (get-decendents db egg-id)
+  (let ((s (select
+            db  "select e.id, e.parent, e.genotype, e.generation, (e.fitness/e.tests) from egg as e where e.parent = ? " egg-id)))
+    (msg "gd" egg-id)
+    (if (null? s)
+        '()
+        (map
+         (lambda (i)
+           (list
+            (list (vector-ref i 0) (vector-ref i 1) (vector-ref i 2)  (vector-ref i 3))
+            (get-decendents db (vector-ref i 0))))
+         (cdr s)))))
+
+(define (count-decendents db egg-id)
+  (let ((s (select
+            db  "select e.id, e.parent, e.genotype, e.generation, (e.fitness/e.tests) from egg as e where e.parent = ? " egg-id)))
+    (if (null? s)
+        1
+        (foldl
+         (lambda (i r)
+           (+ r (count-decendents db (vector-ref i 0))))
+         1
+         (cdr s)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game stuff

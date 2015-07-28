@@ -613,9 +613,14 @@
   (let ((fn (game-postrender game)))
     (fn ctx)))
 
+(define clear-screen 1)
+
 (define (top-render)
   (when (not (eq? game 0))
-        (ctx.clearRect 0 0 screen-width screen-height)
+        ;; wrap all game code in a exception handler
+        (js "try {")
+        (when (eq? clear-screen 1)
+              (ctx.clearRect 0 0 screen-width screen-height))
         (let ((t (- (js "new Date()") load-time)))
           (set! ctx.fillStyle "#000");
 ;;          (ctx.fillText (+ "Time is: " t) 10 750)
@@ -633,6 +638,12 @@
           (top-postrender-game ctx game)
 
           )
+        (js "} catch(e) {")
+        ;; not sure why I need to catch this to show stack trace...???
+        (msg e)
+        ;; and this to stop execution...
+        (js "throw new Error();")
+        (js "}")
         (requestAnimFrame top-render ctx)))
 
 (define game 0)

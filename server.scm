@@ -142,6 +142,36 @@
            samples))))))))
 
 
+   (register
+    (req 'get-all '(population replicate generation))
+    (lambda (population replicate generation)
+      (msg "get-all:" population replicate generation)
+      (pluto-response
+       (scheme->json
+        (pop-all db population
+                 (string->number replicate)
+                 (string->number generation))))))
+
+   (register
+    (req 'get-decendents '(egg-id))
+    (lambda (egg-id)
+      (pluto-response
+       (scheme->json
+        (list
+         (get-dindividual db (string->number egg-id))
+         (get-decendents db (string->number egg-id))))
+       )))
+
+   (register
+    (req 'get-single '(egg-id))
+    (lambda (egg-id)
+      (pluto-response
+       (scheme->json
+        (get-single db (string->number egg-id)))
+       )))
+
+
+
 ;   (pluto-response
 ;-       (string-append
 ;-        (scheme->txt

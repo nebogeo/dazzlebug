@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>egglab viz</title>
+    <link rel="stylesheet" media="screen" rel="stylesheet" type="text/css"/>
+    <link href="css/viz.css" rel="stylesheet" type="text/css">
+
+    <div style="font-family: testtt;">.</div>
+
+    <body onload="init(['scm/viz.jscm']);" bgcolor="#ffffff">
+
+      <div id="fb-root"></div>
+
+      <div>
+        <center>
+          <canvas id="canvas" width="12340" height="3672"></canvas>
+        </center>
+
+        <img id="canvasImg" alt="Right click to save me!">
+
+        <div style="display:none;">
+          <h2>output</h2>
+          <pre><div id="output"></div></pre>
+
+          <h2>compiler</h2>
+          <pre><div id="compiled"></div></pre>
+        </div>
+      </div>
+
+      <script type="text/javascript" src="js/jquery-1.9.1.min.js"></script>
+      <script type="text/javascript" src="js/fb.js"></script>
+      <script type="text/javascript" src="js/appid.js"></script>
+      <script type="text/javascript" src="js/ditto.js"></script>
+
+    </body>
+
+</html>

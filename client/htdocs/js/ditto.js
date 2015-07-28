@@ -264,6 +264,7 @@ ditto.foldl_helper = function(args) {
     var fn=args[0];
     var val=args[1];
     var src=args[2];
+
     for (var i=0; i<src.length; i++) {
         slice = [];
         for(var j=2; j<args.length; j++) {
@@ -548,6 +549,7 @@ ditto.compile_code_unparsed = function(scheme_code) {
 ditto.load = function(url) {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open( "GET", url, false );
+    xmlHttp.overrideMimeType("script");
     xmlHttp.send( null );
     var str=xmlHttp.responseText;
     return "\n/////////////////// "+url+"\n"+ditto.compile_code(str)+"\n";
@@ -556,6 +558,7 @@ ditto.load = function(url) {
 ditto.load_unparsed = function(url) {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open( "GET", url, false );
+    xmlHttp.overrideMimeType("script");
     xmlHttp.send( null );
     var str=xmlHttp.responseText;
     return "\n/////////////////// "+url+"\n"+ditto.compile_code_unparsed(str)+"\n";
