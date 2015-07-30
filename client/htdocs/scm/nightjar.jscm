@@ -124,6 +124,7 @@
 
 (define (play-sound-looped sound)
   (when (game-mute game)
+        (msg sound)
         (let ((snd (find-sound sound)))
           (if (eq? (js "typeof snd.loop") "boolean")
               (set! snd.loop true)

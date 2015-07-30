@@ -22,6 +22,15 @@
 (load "scm/nightjar.jscm")
 (load "scm/egglab-common.jscm")
 
+(define (pick-idle) (string-append "idle-" (+ 1 (random 13)) ".wav"))
+(define current-idle (pick-idle))
+(define (play-idle)
+  (stop-sound current-idle)
+  (set! current-idle (pick-idle))
+  (play-sound-looped current-idle))
+(define (stop-idle)
+  (stop-sound current-idle))
+
 (define num-eggs-total 20)
 (define num-eggs-from-population 20)
 (define num-best-eggs 32)
@@ -701,7 +710,7 @@
     (game-modify-buttons (list) c))))
 
 (define (nightjar-thanks c)
-  (stop-sound "idle-01.wav")
+  (stop-idle)
   (game-modify-mouse-hook
    (lambda (type c) c)
    (game-modify-update
@@ -911,6 +920,7 @@
   (/ (time-elapsed c) 1000))
 
 (define (result-text t)
+  (when (< (rndf) 0.5) (play-sound (string-append "shreak-" (+ 1 (random 5)) ".wav")))
   (play-sound (string-append "splat-" (+ 1 (random 12)) ".wav")))
 
 (define (normalise-direction d)
@@ -960,7 +970,7 @@
        ;; clicked function
        (lambda (c)
          (submit-egg egg c)
-         (stop-sound "idle-01.wav")
+         (stop-idle)
 
          (let ((t (seconds-taken c)))
            ;; kinda in the constructor for this, but need to get it from the game
@@ -985,31 +995,34 @@
             (+ (game-time c) 500))))))))
 
 (define (nightjar-flicker-game c)
-  (stop-sound "idle-01.wav")
-  (play-sound-looped "idle-01.wav")
+  (play-idle)
   (game-modify-mouse-hook
    (lambda (type c)
-     (when (eq? type "down")
+     (if (eq? type "down")
            (let ((egg (car (egglab-data-eggs (game-data c))))
                  (egg-button (car (game-buttons c))))
-             (msg "playing...")
-             (play-sound (string-append "shreak-" (+ 1 (random 5)) ".wav"))
-             (stop-sound "idle-01.wav")
-             (server-call
-              "add-click"
-              (list
-               (list "player_id" (egglab-data-player-id (game-data c)))
-               (list "egg_id" (individual-id egg))
-               (list "mouse_x" (game-mx c))
-               (list "mouse_y" (game-my c))
-               (list "target_x" (button-x egg-button))
-               (list "target_y" (button-y egg-button))
-               (list "target_dir_x" (car (animated-button-dir egg-button)))
-               (list "target_dir_y" (cadr (animated-button-dir egg-button)))
-               (list "success" 0)))))
-     (game-modify-buttons
-      (list (animated-button-modify-state (car (game-buttons c)) "panic"))
-      c))
+
+             ;; if the egg button has gone, then it's been eaten
+             ;; and the click will already have been reported
+             (cond (egg-button
+                    ;;(play-sound (string-append "shreak-" (+ 1 (random 5)) ".wav"))
+                    (server-call
+                     "add-click"
+                     (list
+                      (list "player_id" (egglab-data-player-id (game-data c)))
+                      (list "egg_id" (individual-id egg))
+                      (list "mouse_x" (game-mx c))
+                      (list "mouse_y" (game-my c))
+                      (list "target_x" (button-x egg-button))
+                      (list "target_y" (button-y egg-button))
+                      (list "target_dir_x" (car (animated-button-dir egg-button)))
+                      (list "target_dir_y" (cadr (animated-button-dir egg-button)))
+                      (list "success" 0)))
+                   (game-modify-buttons
+                    (list (animated-button-modify-state (car (game-buttons c)) "panic"))
+                    c))
+                   (else c)))
+           c))
   (game-modify-update
    (lambda (t c)
      (cond
@@ -1019,6 +1032,8 @@
        ;; don't submit ones not clicked on???
        (submit-egg (car (egglab-data-eggs (game-data c))) c)
        (play-sound (string-append "fail.wav"))
+       (stop-idle)
+       (play-idle)
        (build-next-egg c))))
    (game-modify-render
     (lambda (ctx)
@@ -1236,7 +1251,21 @@
   "shreak-4.wav"
   "shreak-5.wav"
   "fail.wav"
-  "idle-01.wav"))
+  "idle-1.wav"
+  "idle-2.wav"
+  "idle-3.wav"
+  "idle-4.wav"
+  "idle-5.wav"
+  "idle-6.wav"
+  "idle-7.wav"
+  "idle-8.wav"
+  "idle-9.wav"
+  "idle-10.wav"
+  "idle-11.wav"
+  "idle-12.wav"
+  "idle-13.wav"
+  "idle-14.wav"
+  ))
 
 (load-images!
  (append
