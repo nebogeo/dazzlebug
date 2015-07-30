@@ -239,7 +239,7 @@
 
 (define (dazzle-data-init-land d land)
   (dazzle-data-modify-images
-   (dazzle-data-modify-land d land)) ())
+   (dazzle-data-modify-land d land) ()))
 
 (define (dazzle-data-start-game d player-id time patterns offset replicate)
   (list time patterns offset
@@ -487,11 +487,12 @@
        "Play again!" 1100 720 "jumpy" (find-image "button-3.png")
        (lambda (c)
          (async-load-images c "CF" bg_images)
+         (msg (game-data c))
          (nightjar-research
-          "flicker"
+          "flicker" c
           (game-modify-data
            (lambda (d)
-             (dazzle-data-init "CF"))
+             (dazzle-data-init-land d "CF"))
            c)))))
      c))))
 
@@ -713,11 +714,11 @@
      (lambda (ctx)
        (set! ctx.font "normal 30pt 'Press Start 2P'")
        (wrap-text ctx "Thanks for playing! With your help the bugs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
-
+       (set! ctx.font "normal 40pt 'Press Start 2P'")
        (text-flashy-render ctx (string-append "Your average time was: "
                                               (time-to-seconds (dazzle-data-player-time (game-data c)))
                                               " seconds.")
-                           225 400 (game-time c))
+                           150 400 (game-time c))
 
        (set! ctx.font "normal 15pt 'Press Start 2P'"))
 
@@ -1280,6 +1281,7 @@
  (lambda ()
    (start-game canvas ctx)))
 
+;; we load these asyncronously
 (define bg_images
   (list
    "IMG_3205_cal.png"

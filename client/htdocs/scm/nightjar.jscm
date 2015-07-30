@@ -314,10 +314,8 @@
     (let ((ta (txt.split "")))
       (index-for-each
        (lambda (i c)
-         (set! ctx.fillStyle (rgb-to-hex
-                              (* 256 (sin (+ (* t 0.001) i)))
-                              (* 256 (sin (+ (* t 0.003) i)))
-                              (* 256 (sin (+ (* t 0.004) i)))))
+         (let ((col (* 128 (sin (+ (* t 0.01) i)))))
+           (set! ctx.fillStyle (rgb-to-hex col col col)))
          (set! cm (ctx.measureText c))
          (ctx.fillText c (+ x pos) y)
          (set! pos (+ pos cm.width)))
