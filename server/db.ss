@@ -37,6 +37,7 @@
 
 ;; initialise the state
 (define (check/init-state db population replicate)
+  (msg population replicate)
   (let ((s (select db "select * from state where population=? and replicate=?"
                    population replicate)))
     (when (null? s)
@@ -126,13 +127,13 @@
 
 
 ;; random selection of count entities
-(define (hiscores db population count)
+(define (hiscores db count)
   (let ((s (select
             db (string-append
                 "select p.player_name, p.average_score, p.generation from high_scores as p "
-                "where p.population = ? and p.generation >= 0 "
+                "where p.generation >= 0 "
                 "order by p.average_score limit ?")
-            population count)))
+            count)))
     (if (null? s)
         '()
         (map

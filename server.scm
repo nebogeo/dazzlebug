@@ -64,8 +64,8 @@
       (pluto-response (scheme->json '("hello")))))
 
    (register
-    (req 'add '(phase population replicate egg-id player-id fitness parent image x-pos y-pos genotype))
-    (lambda (phase population replicate egg-id player-id fitness parent image x-pos y-pos genotype)
+    (req 'add '(phase population replicate pattern-id player-id fitness parent image x-pos y-pos genotype))
+    (lambda (phase population replicate pattern-id player-id fitness parent image x-pos y-pos genotype)
     (syncro
        (lambda ()
       (pluto-response
@@ -75,7 +75,7 @@
          population
          (string->number replicate)
          phase
-         (string->number egg-id)
+         (string->number pattern-id)
          (string->number player-id)
          (min (string->number fitness) 10000)
          (string->number parent)
@@ -86,8 +86,8 @@
          (escape-quotes genotype))))))))
 
    (register
-    (req 'add-click '(player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success))
-    (lambda (player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success)
+    (req 'add-click '(player_id pattern_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success))
+    (lambda (player_id pattern_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success)
       (syncro
        (lambda ()
          (pluto-response
@@ -95,7 +95,7 @@
            (insert-performance
             db
             (string->number player_id)
-            (string->number egg_id)
+            (string->number pattern_id)
             (string->number mouse_x)
             (string->number mouse_y)
             (string->number target_x)
@@ -104,16 +104,18 @@
             (string->number target_dir_y)
             (string->number success))))))))
 
-
    (register
-    (req 'sample '(player-id population replicate count))
-    (lambda (player-id population replicate count)
-    (syncro
-     (lambda ()
-      (let ((samples (pop-sample
-                      db population
-                      (string->number replicate)
-                      (string->number count))))
+    (req 'sample '(player-id replicate count))
+    (lambda (player-id replicate count)
+      (let ((samples (map
+                      (lambda (population)
+                        (msg "-----------------------------")
+                        (msg population)
+                        (pop-sample
+                         db population
+                         (string->number replicate)
+                         (string->number count)))
+                      (list "fast" "slow" "medium"))))
         (pluto-response
          (scheme->json
           (list
@@ -121,25 +123,8 @@
            (if (eq? (string->number player-id) 0)
                (init-player db)
                (list "player-id" (string->number player-id)))
-           samples))))))))
+           samples))))))
 
-   (register
-    (req 'egghunt-sample '(player-id population replicate count))
-    (lambda (player-id population replicate count)
-    (syncro
-       (lambda ()
-      (let ((samples (pop-sample-egghunt
-                      db population
-                      (string->number replicate)
-                      (string->number count))))
-        (pluto-response
-         (scheme->json
-          (list
-           ;; init the player if needed, at the same time
-           (if (eq? (string->number player-id) 0)
-               (init-player db)
-               (list "player-id" (string->number player-id)))
-           samples))))))))
 
 
    (register
@@ -189,15 +174,17 @@
 
 
    (register
-    (req 'top-eggs '(replicate count))
+    (req 'top-patterns '(replicate count))
     (lambda (replicate count)
     (syncro
        (lambda ()
       (pluto-response
        (scheme->json
         (list
-         (top-eggs db "CF" replicate (string->number count))
-         '() '())))))))
+         (top-eggs db "fast" replicate (string->number count))
+         (top-eggs db "medium" replicate (string->number count))
+         (top-eggs db "slow" replicate (string->number count))
+         )))))))
 
    (register
     (req 'family-tree '(id))
@@ -216,9 +203,9 @@
       (pluto-response
        (scheme->json
         (list
-         (pop-stats db "CF")
-         (pop-stats db "MV")
-         (pop-stats db "CP"))))))))
+         (pop-stats db "slow")
+         (pop-stats db "medium")
+         (pop-stats db "fast"))))))))
 
 
    (register
@@ -245,20 +232,20 @@
          (string->number age-range))))))))
 
    (register
-    (req 'add-score '(player-id name score population replicate))
-    (lambda (player-id name score population replicate)
-    (syncro
+    (req 'add-score '(player-id name score replicate))
+    (lambda (player-id name score replicate)
+      (syncro
        (lambda ()
-      (insert-score
-       db
-       (string->number player-id)
-       name
-       (string->number score)
-       population
-       (string->number replicate)
-       (get-state db population replicate "generation"))
-      (pluto-response
-       (scheme->json '("ok")))))))
+         (insert-score
+          db
+          (string->number player-id)
+          name
+          (string->number score)
+          ""
+          (string->number replicate)
+          (get-state db "slow" replicate "generation"))
+         (pluto-response
+          (scheme->json '("ok")))))))
 
    (register
     (req 'hiscores '(count))
@@ -268,10 +255,8 @@
       (pluto-response
        (scheme->json
         (list
-         (hiscores db "CF" (string->number count))
-         (hiscores db "MV" (string->number count))
-         (hiscores db "CP" (string->number count)))
-        ))))))
+         (hiscores db (string->number count))
+        )))))))
 
    (register
     (req 'addegghunt '(background challenger message egg1 x1 y1 egg2 x2 y2 egg3 x3 y3 egg4 x4 y4 egg5 x5 y5))

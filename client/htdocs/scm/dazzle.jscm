@@ -22,6 +22,12 @@
 (load "scm/nightjar.jscm")
 (load "scm/dazzle-common.jscm")
 
+(define num-patterns-per-population 1)
+(define num-patterns-total (* num-patterns-per-population 3))
+(define num-best-patterns 16)
+(define selection-pop-size 256)
+(define photo-time-allowed 5)
+
 (define (pick-idle) (string-append "idle-" (+ 1 (random 13)) ".wav"))
 (define current-idle (pick-idle))
 (define (play-idle)
@@ -31,14 +37,8 @@
 (define (stop-idle)
   (stop-sound current-idle))
 
-(define num-patterns-total 20)
-(define num-patterns-from-population 20)
-(define num-best-patterns 32)
-(define selection-pop-size 256)
-(define photo-time-allowed 5)
-
-(define (make-individual id fitness ancestral-fitness generation parent drawable pattern pos phase)
-  (list id fitness ancestral-fitness generation parent drawable pattern pos phase))
+(define (make-individual id fitness ancestral-fitness generation parent drawable pattern pos phase pop)
+  (list id fitness ancestral-fitness generation parent drawable pattern pos phase pop))
 
 (define (individual-id i) (list-ref i 0))
 (define (individual-fitness i) (list-ref i 1))
@@ -50,6 +50,7 @@
 (define (individual-pattern i) (list-ref i 6))
 (define (individual-pos i) (list-ref i 7))
 (define (individual-phase i) (list-ref i 8))
+(define (individual-pop i) (list-ref i 9))
 
 (define world-w 5000)
 (define world-h 500)
@@ -75,7 +76,7 @@
 (define (calc-mutation-rate)
   (* (sqr (* (rndf) 3.16227766)) 0.01)) ;; sqrt of 10 = 0-10%
 
-(define (make-population game samples mutate phase)
+(define (make-population game samples mutate phase population)
   (if (not (eq? phase "init"))
       (map
        (lambda (sample)
@@ -95,11 +96,12 @@
             (pattern-drawable program #t)
             program
             (make-pos game)
-            phase)))
+            phase
+            population)))
        (shuffle samples))
 
       (build-list
-       num-patterns-total
+       num-patterns-per-population
        (lambda (i)
          ;; fixme
          (msg "making random pattern")
@@ -108,7 +110,8 @@
             0 0 0 0 0 (pattern-drawable program #t)
             program
             (make-pos game)
-            phase))))))
+            phase
+            population))))))
 
 (define (make-pattern-grid game samples x-off)
   (index-map
@@ -116,7 +119,7 @@
      (let ((program (car sample))
            (fitness (cadr sample))
            (id (list-ref sample 2)))
-       (let ((x (modulo i 8)) (y (Math.floor (/ i 8))))
+       (let ((x (modulo i 4)) (y (Math.floor (/ i 4))))
          (let ((xx (- (* x 90) 100))
                (yy (+ 150 (* y 120))))
            (list
@@ -125,7 +128,7 @@
              0 0 0 0
              (pattern-drawable program #f)
              program
-             (list (+ x-off xx) yy))
+             (list (+ x-off xx) yy) "" "")
             (string-append
              (time-to-seconds fitness)
              " : " (list-ref sample 3)
@@ -134,7 +137,10 @@
 
 (define (make-best-population game samplesa samplesb samplesc)
   (append
-   (make-pattern-grid game samplesa 400)))
+   (make-pattern-grid game samplesa 180)
+   (make-pattern-grid game samplesb 580)
+   (make-pattern-grid game samplesc 980)
+   ))
 
 (define (draw-genome-node ctx program centrex centrey posx posy d apa start end n dist)
   (let ((childstart (+ start (* apa n))))
@@ -276,7 +282,7 @@
 (define (bg-full-path fn)
   (string-append "/bg/" fn))
 
-(define (async-load-images c path l)
+(define (async-load-images c l)
   (for-each
    (lambda (i)
      (let ((fullpath (bg-full-path i)))
@@ -291,7 +297,7 @@
    (shuffle l)))
 
 ;; just to get them in the cache
-(define (async-load-images-null c path l)
+(define (async-load-images-null c l)
   (for-each
    (lambda (i)
      (let ((fullpath (bg-full-path i)))
@@ -304,7 +310,7 @@
 
 (define (nightjar-intro c)
   ;; kick off the loading here
-  (async-load-images-null c "CF" bg_images)
+  (async-load-images-null c bg_images)
 
   (game-modify-render
    (lambda (ctx)
@@ -334,7 +340,7 @@
      (dazzle-button
       "Play" 600 700 (find-image "button-1.png")
       (lambda (c)
-        (async-load-images c "CF" bg_images)
+        (async-load-images c bg_images)
         (nightjar-research
          "flicker"
          (game-modify-data
@@ -345,8 +351,11 @@
      (dazzle-button
       "More info" 350 700 (find-image "button-2.png")
       (lambda (c)
-        (nightjar-env c)))
-
+        (nightjar-env
+         (game-modify-data
+          (lambda (d)
+            (dazzle-data-init "CF"))
+          c))))
 
     (image-button
      "Browser check" 850 700 "jumpy" (find-image "button-3.png")
@@ -486,7 +495,7 @@
       (image-button
        "Play again!" 1100 720 "jumpy" (find-image "button-3.png")
        (lambda (c)
-         (async-load-images c "CF" bg_images)
+         (async-load-images c bg_images)
          (msg (game-data c))
          (nightjar-research
           "flicker" c
@@ -503,7 +512,7 @@
      c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-says ctx 20 "Please wait while I calculate the best patterns from one of my populations for you..."))
+      (robo-nightjar-says ctx 20 "Please wait while I calculate the best patterns from one of the populations for you..."))
     (game-modify-buttons (list) c))))
 
 
@@ -512,7 +521,7 @@
    (lambda (t c ) c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-bot-left ctx 17 "These are my quickest clicking players. The number in brackets is the generation of pattern.")
+      (robo-nightjar-bot-left ctx 17 "These are the quickest clicking players. The number in brackets is the generation of pattern.")
       (set! ctx.fillStyle "#000")
       (set! ctx.font "normal 30pt 'Press Start 2P'")
       (wrap-text ctx (string-append "High Scores") 120 100 1000 70)
@@ -601,11 +610,11 @@
   (ctx.restore)
 
   (set! ctx.fillStyle "#f77")
-  (ctx.fillText "Mozambique nightjar" (+ x 50) (+ y 40))
+  (ctx.fillText "Slow bugs" (+ x 50) (+ y 40))
   (set! ctx.fillStyle "#7f7")
-  (ctx.fillText "Pennant-winged nightjar" (+ x 50) (+ y 80))
+  (ctx.fillText "Medium bugs" (+ x 50) (+ y 80))
   (set! ctx.fillStyle "#77f")
-  (ctx.fillText "Fiery-necked nightjar" (+ x 50) (+ y 120))
+  (ctx.fillText "Fast bugs" (+ x 50) (+ y 120))
 
   (set! ctx.fillStyle "#000")
   (ctx.fillText "Generations" (+ x h -100) (+ 25 y (/ w 2)))
@@ -634,6 +643,19 @@
        (lambda (c) (nightjar-env c))))
      c))))
 
+(define (samples-to-pop samples pop)
+  (make-population
+   "flicker"
+   (if (eq? null samples)
+       ()
+       (map
+        (lambda (d)
+          ;; individually parse the pattern's code
+          (cons (JSON.parse (car d)) (cdr d)))
+        (cadr samples)))
+   (if (eq? (car samples) "fill") 1 0)
+   (car samples)
+   pop))
 
 (define (nightjar-research game-type c)
   (game-modify-update
@@ -658,24 +680,16 @@
             "sample"
             (list
              (list "player-id" (dazzle-data-player-id (game-data c)))
-             (list "population" (dazzle-data-land (game-data c)))
              (list "replicate" replicate)
-             (list "count" num-patterns-from-population))
+             (list "count" num-patterns-per-population))
             (lambda (c data)
               (let ((ret (JSON.parse data)))
                 (let ((player-id (cadr (car ret)))
                       (samples (cadr ret)))
-                  (let ((pop (make-population
-                              "flicker"
-                              (if (eq? null samples)
-                                  ()
-                                  (map
-                                   (lambda (d)
-                                     ;; individually parse the pattern's code
-                                     (cons (JSON.parse (car d)) (cdr d)))
-                                   (cadr samples)))
-                              (if (eq? (car samples) "fill") 1 0)
-                              (car samples))))
+                  ;; combine the fast/slow/medium individuals and mix em up
+                  (let ((pop (shuffle (append (samples-to-pop (list-ref samples 0) "fast")
+                                              (samples-to-pop (list-ref samples 1) "slow")
+                                              (samples-to-pop (list-ref samples 2) "medium")))))
                     (nightjar-flicker-game
                      (game-modify-data
                       (lambda (d)
@@ -683,7 +697,7 @@
                           (dazzle-data-start-game
                            d player-id time-now pop (list 0 0) replicate)))
                       c))))))))
-         (nightjar-generating-patterns c)))
+        (nightjar-generating-patterns c)))
 
 
 
@@ -739,7 +753,6 @@
                    (list "player-id" (dazzle-data-player-id (game-data c)))
                    (list "name" (dazzle-data-username (game-data c)))
                    (list "score" (dazzle-data-player-time (game-data c)))
-                   (list "population" (dazzle-data-land (game-data c)))
                    (list "replicate" (dazzle-data-replicate (game-data c)))))
                  (nightjar-env c))))))
        c))))))
@@ -809,7 +822,6 @@
                          (list "player-id" (dazzle-data-player-id (game-data c)))
                          (list "name" (dazzle-data-username (game-data c)))
                          (list "score" (dazzle-data-player-time (game-data c)))
-                         (list "population" (dazzle-data-land (game-data c)))
                          (list "replicate" (dazzle-data-replicate (game-data c)))))
                        (server-call
                         "player"
@@ -875,7 +887,7 @@
    "add"
    (list
     (list "phase" (individual-phase pattern))
-    (list "population" (dazzle-data-land (game-data c)))
+    (list "population" (individual-pop pattern))
     (list "replicate" (dazzle-data-replicate (game-data c)))
     (list "pattern-id" (individual-id pattern))
     (list "player-id" (dazzle-data-player-id (game-data c)))
@@ -921,15 +933,14 @@
 (define (normalise-direction d)
   (vnormalise (vector (vx d) (vy d) 0)))
 
-(define (button-move-bounce b c)
-  (let ((speed 1.5))
-    (button-bounce
-     (button-modify-y
-      (button-modify-x
-       b (+ (button-x b)
-            (* speed (vx (animated-button-dir b)) (game-delta c))))
-      (+ (button-y b)
-         (* speed (vy (animated-button-dir b)) (game-delta c)))))))
+(define (button-move-bounce b c speed)
+  (button-bounce
+   (button-modify-y
+    (button-modify-x
+     b (+ (button-x b)
+          (* speed (vx (animated-button-dir b)) (game-delta c))))
+    (+ (button-y b)
+       (* speed (vy (animated-button-dir b)) (game-delta c))))))
 
 
 (define (button-jitter-direction b)
@@ -942,7 +953,7 @@
        (button-jitter-direction b) "")
       b))
 
-(define (button-do-direction b c)
+(define (button-do-direction b c speed)
   (button-update-state
    (if (> (animated-button-time b) 0.5)
        (animated-button-modify-time
@@ -953,7 +964,14 @@
 
 (define (flicker-build-pattern c)
   (let ((pattern (car (dazzle-data-patterns (game-data c)))))
-    (let ((pos (individual-pos pattern)))
+    (let ((pos (individual-pos pattern))
+          (speed 1.5))
+
+      (if (eq? (individual-pop pattern) "slow")
+          (set! speed 1)
+          (when (eq? (individual-pop pattern) "fast")
+                (set! speed 2)))
+
       (animated-button
        "" (car pos) (cadr pos)
        (hcrndvec 300)
@@ -961,7 +979,7 @@
        ;; animate function
        (lambda (b)
          (button-move-bounce
-          (button-do-direction b c) c))
+          (button-do-direction b c) c speed))
        ;; clicked function
        (lambda (c)
          (submit-pattern pattern c)
@@ -1084,10 +1102,14 @@
    (game-modify-render
     (lambda (ctx)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
+      (wrap-text ctx "Slow bugs" -400 80 1000 10)
+      (wrap-text ctx "Medium bugs" 0 80 1000 10)
+      (wrap-text ctx "Fast bugs" 400 80 1000 10)
+
       (set! ctx.font "normal 15pt 'Press Start 2P'")
       (robo-nightjar-says-bottom
        ctx 18
-       (string-append "These are my best patterns so far "
+       (string-append "These are the best patterns so far from replicate "
                       (+ replicate 1) ". Click on a pattern to see it's ancestors."))
       (set! ctx.font "normal 10pt 'Press Start 2P'"))
 

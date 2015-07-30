@@ -20,16 +20,16 @@
 (load "scm/maths.jscm")
 (load "scm/random.jscm")
 (load "scm/nightjar.jscm")
-(load "scm/egglab-common.jscm")
+(load "scm/dazzle-common.jscm")
 
-(define num-eggs-total 20)
-(define num-eggs-from-population 20)
-(define num-best-eggs 16)
+(define num-patterns-total 20)
+(define num-patterns-from-population 20)
+(define num-best-patterns 16)
 (define selection-pop-size 256)
 (define photo-time-allowed 10)
 
-(define (make-individual id fitness ancestral-fitness generation parent drawable egg pos phase)
-  (list id fitness ancestral-fitness generation parent drawable egg pos phase))
+(define (make-individual id fitness ancestral-fitness generation parent drawable pattern pos phase)
+  (list id fitness ancestral-fitness generation parent drawable pattern pos phase))
 
 (define (individual-id i) (list-ref i 0))
 (define (individual-fitness i) (list-ref i 1))
@@ -38,7 +38,7 @@
 (define (individual-generation i) (list-ref i 3))
 (define (individual-parent i) (list-ref i 4))
 (define (individual-drawable i) (list-ref i 5))
-(define (individual-egg i) (list-ref i 6))
+(define (individual-pattern i) (list-ref i 6))
 (define (individual-pos i) (list-ref i 7))
 (define (individual-phase i) (list-ref i 8))
 
@@ -85,14 +85,14 @@
       (list "phase" "init")
       (list "population" p)
       (list "replicate" 0)
-      (list "egg-id" 0)
+      (list "pattern-id" 0)
       (list "player-id" 0)
       (list "fitness" 0)
       (list "parent" 0)
       (list "image" "init")
       (list "x-pos" 0)
       (list "y-pos" 0)
-      (list "genotype" (JSON.stringify (make-random-egg egg-complexity))))))
+      (list "genotype" (JSON.stringify (make-random-pattern pattern-complexity))))))
 
   (set! pre-pop-count (+ pre-pop-count 1))
   (if (< pre-pop-count 128)
@@ -137,7 +137,7 @@
        (lambda (sample)
          (let ((program (if (zero? mutate)
                             (list-ref sample 0)
-                            (egg-mutate (list-ref sample 0)
+                            (pattern-mutate (list-ref sample 0)
                                         (calc-mutation-rate))))
                (ancestral-fitness (list-ref sample 1))
                (generation (list-ref sample 2))
@@ -148,25 +148,25 @@
             ancestral-fitness
             (+ generation 1)
             id
-            (egg-drawable program #t)
+            (pattern-drawable program #t)
             program
             (make-pos game)
             phase)))
        (shuffle samples))
 
       (build-list
-       num-eggs-total
+       num-patterns-total
        (lambda (i)
          ;; fixme
-         (msg "making random egg")
-         (let ((program (make-random-egg egg-complexity)))
+         (msg "making random pattern")
+         (let ((program (make-random-pattern pattern-complexity)))
            (make-individual
-            0 0 0 0 0 (egg-drawable program #t)
+            0 0 0 0 0 (pattern-drawable program #t)
             program
             (make-pos game)
             phase))))))
 
-(define (make-egg-grid game samples x-off)
+(define (make-pattern-grid game samples x-off)
   (index-map
    (lambda (i sample)
      (let ((program (car sample))
@@ -179,7 +179,7 @@
             (make-individual
              id
              0 0 0 0
-             (egg-drawable program #f)
+             (pattern-drawable program #f)
              program
              (list (+ x-off xx) yy))
             (string-append
@@ -190,9 +190,9 @@
 
 (define (make-best-population game samplesa samplesb samplesc)
   (append
-   (make-egg-grid game samplesa 0)
-   (make-egg-grid game samplesb 400)
-   (make-egg-grid game samplesc 800)))
+   (make-pattern-grid game samplesa 0)
+   (make-pattern-grid game samplesb 400)
+   (make-pattern-grid game samplesc 800)))
 
 (define (draw-genome-node ctx program centrex centrey posx posy d apa start end n dist)
   (let ((childstart (+ start (* apa n))))
@@ -262,7 +262,7 @@
                               (if (eq? d 0) 600 600))
             (ctx.restore))))))
 
-(define (render-egg-genome ctx egg centrex centrey)
+(define (render-pattern-genome ctx pattern centrex centrey)
   (let ((canvas (document.createElement "canvas")))
     (set! canvas.width screen-width)
     (set! canvas.height screen-height)
@@ -274,18 +274,18 @@
       (set! ctx.strokeStyle "#000")
       (ctx.stroke)
 
-      (inner-draw-genome ctx egg centrex centrey 0 0 (* 2 3.141) 250)
+      (inner-draw-genome ctx pattern centrex centrey 0 0 (* 2 3.141) 250)
       (set! ctx.fillStyle "#fff"))
     canvas))
 
 
-(define (render-egg-family-tree ancestors)
+(define (render-pattern-family-tree ancestors)
   (map
    (lambda (anc)
-     (egg-drawable (JSON.parse (list-ref (car anc) 1)) #f))
+     (pattern-drawable (JSON.parse (list-ref (car anc) 1)) #f))
    ancestors))
 
-(define (draw-egg-family-tree ctx ancestors eggs)
+(define (draw-pattern-family-tree ctx ancestors patterns)
 
   (let ((w (/ (- screen-width 400) (length ancestors))))
     (set! ctx.fillStyle "#000")
@@ -295,7 +295,7 @@
      (lambda (i anc)
        (let ((x (+ (* i w) 100)))
 
-         (ctx.drawImage (list-ref eggs i) x 250)
+         (ctx.drawImage (list-ref patterns i) x 250)
 
          (fill-centre-text ctx (+ "" (car (car anc)) " " (list-ref (car anc) 2)) x 200)
          (fill-centre-text ctx (+ "" (time-to-seconds (list-ref (car anc) 3))) x 500)
@@ -341,7 +341,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define pop-type "CF")
+(define pop-type "slow")
 (define rep 0)
 
 (define red "#fe0000")
@@ -364,21 +364,21 @@
 ;  (server-call-mutate
 ;   "get-decendents"
 ;   (list
-;    (list "egg-id" 501)) ; 125 23
+;    (list "pattern-id" 501)) ; 125 23
 ;   (lambda (c data)
 ;     (nightjar-viz-decendants data c)))
 
 ; (server-call-mutate
 ;   "get-single"
 ;   (list
-;    (list "egg-id" 37227)) ;; 39416
+;    (list "pattern-id" 37227)) ;; 39416
 ;   (lambda (c data)
 ;     (nightjar-viz-single (JSON.parse data) green c)))
 
   ;; (server-call-mutate
   ;;  "get-single"
   ;;  (list
-  ;;   (list "egg-id" 25147))
+  ;;   (list "pattern-id" 25147))
   ;;  (lambda (c data)
   ;;    (nightjar-viz-genome (JSON.parse data) c)))
 
@@ -404,14 +404,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define done 0)
 
-(define (nightjar-viz-genome egg c)
-  (let ((program (JSON.parse (list-ref egg 2))))
+(define (nightjar-viz-genome pattern c)
+  (let ((program (JSON.parse (list-ref pattern 2))))
     (game-modify-render
      (lambda (ctx)
        (when (zero? done)
              (msg program)
              (ctx.clearRect 0 0 screen-width screen-height)
-             (ctx.drawImage (render-egg-genome ctx program (/ screen-width 2) (/ screen-height 2)) 0 0)
+             (ctx.drawImage (render-pattern-genome ctx program (/ screen-width 2) (/ screen-height 2)) 0 0)
 
 
              (set! ctx.fillStyle "#000")
@@ -419,16 +419,16 @@
 
              (let ((pop
                     (cond
-                     ((eq? (list-ref egg 5) "CP") "Fiery-necked nightjar")
-                     ((eq? (list-ref egg 5) "CF") "Mozambique nightjar")
-                     ((eq? (list-ref egg 5) "MV") "Pennant-winged nightjar")
+                     ((eq? (list-ref pattern 5) "CP") "Fiery-necked nightjar")
+                     ((eq? (list-ref pattern 5) "CF") "Mozambique nightjar")
+                     ((eq? (list-ref pattern 5) "MV") "Pennant-winged nightjar")
                      (else "none!")))
-                   (fitness (+ "" (/ (list-ref egg 4) 1000))))
+                   (fitness (+ "" (/ (list-ref pattern 4) 1000))))
 
                (fill-centre-text ctx (string-append
-                              "Generated pattern program for egg ID: " (list-ref egg 0) " | "
+                              "Generated pattern program for pattern ID: " (list-ref pattern 0) " | "
                               "Nest site: " pop  " | "
-                              "Generation: " (list-ref egg 3)
+                              "Generation: " (list-ref pattern 3)
                               )
                              (/ screen-width 2) 130))
 
@@ -442,7 +442,7 @@
 
 (define generationx 0)
 (define pos 0)
-(define eggs ())
+(define patterns ())
 (define pop-drawables ())
 (define wait 0)
 (define connections ())
@@ -460,47 +460,47 @@
       (set! ctx.font "normal 13pt 'Press Start 2P'")
 
       (index-for-each
-       (lambda (i egg)
-         (set! eggs (cons (list (list-ref egg 0) (list-ref egg 2)
-                                (* i 52) (+ 40 (* generationx 180))) eggs))
-         (let ((d (egg-drawable (JSON.parse (list-ref egg 1)) #f)))
+       (lambda (i pattern)
+         (set! patterns (cons (list (list-ref pattern 0) (list-ref pattern 2)
+                                (* i 52) (+ 40 (* generationx 180))) patterns))
+         (let ((d (pattern-drawable (JSON.parse (list-ref pattern 1)) #f)))
            (tctx.drawImage d (* i 90) 40 128 128)
-           (tctx.fillText (+ "id: " (list-ref egg 0) " ") (+ 30 (* i 90)) 20)
-           (tctx.fillText (+ "parent: " (list-ref egg 2) " ") (+ 30 (* i 90)) 30)
-           (tctx.fillText (+ "fitness: " (/ (list-ref egg 3) 1000) " ") (+ 30 (* i 90)) 40)
-           (tctx.fillText (+ "tests: " (list-ref egg 4) " ") (+ 30 (* i 90)) 50)
+           (tctx.fillText (+ "id: " (list-ref pattern 0) " ") (+ 30 (* i 90)) 20)
+           (tctx.fillText (+ "parent: " (list-ref pattern 2) " ") (+ 30 (* i 90)) 30)
+           (tctx.fillText (+ "fitness: " (/ (list-ref pattern 3) 1000) " ") (+ 30 (* i 90)) 40)
+           (tctx.fillText (+ "tests: " (list-ref pattern 4) " ") (+ 30 (* i 90)) 50)
            ))
        data)
       tcanvas)))
 
-(define (egg-id egg) (list-ref egg 0))
-(define (egg-parent egg) (list-ref egg 1))
-(define (egg-x egg) (list-ref egg 2))
-(define (egg-y egg) (list-ref egg 3))
+(define (pattern-id pattern) (list-ref pattern 0))
+(define (pattern-parent pattern) (list-ref pattern 1))
+(define (pattern-x pattern) (list-ref pattern 2))
+(define (pattern-y pattern) (list-ref pattern 3))
 
-(define (find-egg eggs id)
+(define (find-pattern patterns id)
   (cond
-   ((null? eggs) #f)
-   ((eq? (egg-id (car eggs)) id) (car eggs))
-   (else (find-egg (cdr eggs) id))))
+   ((null? patterns) #f)
+   ((eq? (pattern-id (car patterns)) id) (car patterns))
+   (else (find-pattern (cdr patterns) id))))
 
 
 (define (connection fx fy tx ty) (list fx fy tx ty))
 
-(define (make-connections eggs)
+(define (make-connections patterns)
   (set! connections
         (foldl
-         (lambda (egg r)
-           (let ((parent (find-egg eggs (egg-parent egg))))
-             (msg (+ (egg-id egg) "->" (egg-parent egg)))
+         (lambda (pattern r)
+           (let ((parent (find-pattern patterns (pattern-parent pattern))))
+             (msg (+ (pattern-id pattern) "->" (pattern-parent pattern)))
              (if parent
                  (cons (dbg (connection
-                             (egg-x egg) (egg-y egg)
-                             (egg-x parent) (egg-y parent))) r)
+                             (pattern-x pattern) (pattern-y pattern)
+                             (pattern-x parent) (pattern-y parent))) r)
                  r)
              ))
          ()
-         eggs)))
+         patterns)))
 
 (define (draw-connections ctx)
   (set! ctx.strokeStyle "#000")
@@ -560,7 +560,7 @@
 
 
 (define (nightjar-viz-single data col c)
-  (let ((egg (egg-drawable (JSON.parse (list-ref data 2)) #t))
+  (let ((pattern (pattern-drawable (JSON.parse (list-ref data 2)) #t))
         (fn (list-ref data 10)))
     (let ((image-name (string-append "/bg-print" (fn.substring 3 (- (length fn) 6)) ".jpg")))
       (load-image-mutate
@@ -574,7 +574,7 @@
                    (ctx.fillRect 0 0 screen-width screen-height)
                    (set! ctx.globalAlpha 1)
                    (ctx.drawImage (find-image image-name) 200 200)
-                   (ctx.drawImage egg (+ (+ (* (list-ref data 7) 4) 200) 0)
+                   (ctx.drawImage pattern (+ (+ (* (list-ref data 7) 4) 200) 0)
                                   (- (+ (* (list-ref data 8) 4) 200) 500))
                    (set! ctx.fillStyle "#000")
                    (set! ctx.font "normal 45pt 'Press Start 2P'")
@@ -589,7 +589,7 @@
 
 
                      (ctx.fillText (string-append
-                                    "Egg ID: " (list-ref data 0) " | "
+                                    "Pattern ID: " (list-ref data 0) " | "
                                     "Nest site: " pop  " | "
                                     "Num players: " (list-ref data 9) " | "
                                     "Generation: " (list-ref data 3) " | "
@@ -631,7 +631,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define y 10)
-(define eggs ())
+(define patterns ())
 (define lines ())
 (define (max a b) (if (< a b) b a))
 
@@ -645,13 +645,13 @@
   (cond
    ((null? data) ())
    (else
-;    (let ((egg (car data)))
-      ;(let ((prog (JSON.parse (list-ref egg 2))))
-      ;  (let ((d (egg-drawable prog #f)))
-      ;    (set! eggs
+;    (let ((pattern (car data)))
+      ;(let ((prog (JSON.parse (list-ref pattern 2))))
+      ;  (let ((d (pattern-drawable prog #f)))
+      ;    (set! patterns
       ;          (cons
       ;           (list x y d)
-                                        ;           eggs)))))
+                                        ;           patterns)))))
 
      (let ((w (max 145 w)))
        (let ((start (- x (/ w 2)))
@@ -678,7 +678,7 @@
            (let ((xx (+ x (- (* seg i) (/ seg 2))))
                  (yy (+ y 180))
                  (prog (JSON.parse (list-ref (car d) 2))))
-             (let ((draw (egg-drawable-id prog (list-ref (car d) 0) #f)))
+             (let ((draw (pattern-drawable-id prog (list-ref (car d) 0) #f)))
                (list
                 (list xx yy)
                 (build-structure xx yy seg d)
@@ -771,7 +771,7 @@
              (draw-structure xx yy (cadr d)))))
    struct))
 
-(define (draw-structure-eggs x y struct)
+(define (draw-structure-patterns x y struct)
   (for-each
    (lambda (d)
      (let ((xx (list-ref (car d) 0))
@@ -779,11 +779,11 @@
        (ctx.drawImage (list-ref d 2) (- xx 64) (- yy 64))
        ;;(fill-centre-text ctx (list-ref d 4) xx (- yy 64))
        (when (not (null? (cadr d)))
-             (draw-structure-eggs xx yy (cadr d)))))
+             (draw-structure-patterns xx yy (cadr d)))))
    struct))
 
 
-(define egg-root ())
+(define pattern-root ())
 
 
 
@@ -792,8 +792,8 @@
   (set! structure (build-structure (- (/ screen-width 2) 3000) 80 (* screen-width 0.75) (JSON.parse data)))
 
   (let ((d (car (JSON.parse data))))
-    (set! egg-root (let ((prog (JSON.parse (list-ref d 2))))
-                     (let ((draw (egg-drawable prog #f)))
+    (set! pattern-root (let ((prog (JSON.parse (list-ref d 2))))
+                     (let ((draw (pattern-drawable prog #f)))
                        (list
                         (list-ref d 0)
                         draw)))))
@@ -811,9 +811,9 @@
             (ctx.clearRect 0 0 screen-width screen-height)
 
       (draw-structure (/ screen-width 2) 80 structure)
-      (draw-structure-eggs (/ screen-width 2) 80 structure)
-      (ctx.drawImage (list-ref egg-root 1) (- (/ screen-width 2) 64) (- 80 64))
-      (fill-centre-text ctx (list-ref egg-root 0) (/ screen-width 2) (- 80 64))
+      (draw-structure-patterns (/ screen-width 2) 80 structure)
+      (ctx.drawImage (list-ref pattern-root 1) (- (/ screen-width 2) 64) (- 80 64))
+      (fill-centre-text ctx (list-ref pattern-root 0) (/ screen-width 2) (- 80 64))
 )
       )
     (game-modify-buttons
@@ -836,39 +836,13 @@
  (append
   (list
    "button.png"
-   "bigbutton-1.png"
-   "bigbutton-2.png"
-   "play-button.png"
    "mute-on.png"
    "mute-off.png"
-   "egg.png"
-   "cf.png"
-   "cp.png"
-   "mv.png"
-   "eggs.jpg"
-   "bubble.png"
-   "bubble2.png"
-   "bubble4.png"
-   "ren.png"
-   "ren-eye1.png"
-   "ren-eye2.png"
-   "ren-eye3.png"
-   "ren-leg1.png"
-   "ren-leg2.png"
-   "yes.png"
-   "no.png"
-   "bbsrc.png"
-   "cu.png"
-   "exeter.png"
-   "cuckoos.png"
+   "pattern.png"
    "foam.png"
-   "sensory-ecology.png"
-   "browser-check.png"
-   "facebook.png"
-   "twitter.png"
    "transp.png"
    )
-  egg-images)
+  pattern-images)
  (lambda ()
    (start-game canvas ctx)))
 

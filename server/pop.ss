@@ -222,9 +222,9 @@
 
 (define (check-replicate db replicate)
   (and
-   (check-replicate/pop db "CF" replicate)
-   (check-replicate/pop db "MV" replicate)
-   (check-replicate/pop db "CP" replicate)))
+   (check-replicate/pop db "slow" replicate)
+   (check-replicate/pop db "medium" replicate)
+   (check-replicate/pop db "fast" replicate)))
 
 ;; top n eggs
 (define (top-eggs db population replicate count)
@@ -413,8 +413,8 @@
        "popleast: " (pop-least-tested db population replicate)
        "generation: " (get-state db population replicate "generation")
        "popnextsize: " (pop-next-size db population replicate))
-  (msg (pop-stats db "CF"))
-  (msg (pop-stats db "MV")))
+  (msg (pop-stats db "slow"))
+  (msg (pop-stats db "fast")))
 
 (define (pop-unit-tests)
   (define (emulate db pop rep add)
