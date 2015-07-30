@@ -22,7 +22,7 @@
 (load "scm/nightjar.jscm")
 (load "scm/dazzle-common.jscm")
 
-(define num-patterns-per-population 1)
+(define num-patterns-per-population 7)
 (define num-patterns-total (* num-patterns-per-population 3))
 (define num-best-patterns 16)
 (define selection-pop-size 256)
