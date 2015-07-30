@@ -1,5 +1,5 @@
 ;; -*- mode: scheme; -*-
-;; Egglab Copyright (C) 2013 Dave Griffiths
+;; Dazzle Copyright (C) 2013 Dave Griffiths
 ;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,7 @@
 (load "scm/maths.jscm")
 (load "scm/random.jscm")
 (load "scm/nightjar.jscm")
-(load "scm/egglab-common.jscm")
+(load "scm/dazzle-common.jscm")
 
 (define (pick-idle) (string-append "idle-" (+ 1 (random 13)) ".wav"))
 (define current-idle (pick-idle))
@@ -31,14 +31,14 @@
 (define (stop-idle)
   (stop-sound current-idle))
 
-(define num-eggs-total 20)
-(define num-eggs-from-population 20)
-(define num-best-eggs 32)
+(define num-patterns-total 20)
+(define num-patterns-from-population 20)
+(define num-best-patterns 32)
 (define selection-pop-size 256)
 (define photo-time-allowed 5)
 
-(define (make-individual id fitness ancestral-fitness generation parent drawable egg pos phase)
-  (list id fitness ancestral-fitness generation parent drawable egg pos phase))
+(define (make-individual id fitness ancestral-fitness generation parent drawable pattern pos phase)
+  (list id fitness ancestral-fitness generation parent drawable pattern pos phase))
 
 (define (individual-id i) (list-ref i 0))
 (define (individual-fitness i) (list-ref i 1))
@@ -47,7 +47,7 @@
 (define (individual-generation i) (list-ref i 3))
 (define (individual-parent i) (list-ref i 4))
 (define (individual-drawable i) (list-ref i 5))
-(define (individual-egg i) (list-ref i 6))
+(define (individual-pattern i) (list-ref i 6))
 (define (individual-pos i) (list-ref i 7))
 (define (individual-phase i) (list-ref i 8))
 
@@ -81,7 +81,7 @@
        (lambda (sample)
          (let ((program (if (zero? mutate)
                             (list-ref sample 0)
-                            (egg-mutate (list-ref sample 0)
+                            (pattern-mutate (list-ref sample 0)
                                         (calc-mutation-rate))))
                (ancestral-fitness (list-ref sample 1))
                (generation (list-ref sample 2))
@@ -92,25 +92,25 @@
             ancestral-fitness
             (+ generation 1)
             id
-            (egg-drawable program #t)
+            (pattern-drawable program #t)
             program
             (make-pos game)
             phase)))
        (shuffle samples))
 
       (build-list
-       num-eggs-total
+       num-patterns-total
        (lambda (i)
          ;; fixme
-         (msg "making random egg")
-         (let ((program (make-random-egg egg-complexity)))
+         (msg "making random pattern")
+         (let ((program (make-random-pattern pattern-complexity)))
            (make-individual
-            0 0 0 0 0 (egg-drawable program #t)
+            0 0 0 0 0 (pattern-drawable program #t)
             program
             (make-pos game)
             phase))))))
 
-(define (make-egg-grid game samples x-off)
+(define (make-pattern-grid game samples x-off)
   (index-map
    (lambda (i sample)
      (let ((program (car sample))
@@ -123,7 +123,7 @@
             (make-individual
              id
              0 0 0 0
-             (egg-drawable program #f)
+             (pattern-drawable program #f)
              program
              (list (+ x-off xx) yy))
             (string-append
@@ -134,7 +134,7 @@
 
 (define (make-best-population game samplesa samplesb samplesc)
   (append
-   (make-egg-grid game samplesa 400)))
+   (make-pattern-grid game samplesa 400)))
 
 (define (draw-genome-node ctx program centrex centrey posx posy d apa start end n dist)
   (let ((childstart (+ start (* apa n))))
@@ -185,7 +185,7 @@
                               (if (eq? d 0) 200 180))
             (ctx.restore))))))
 
-(define (render-egg-genome ctx egg centrex centrey)
+(define (render-pattern-genome ctx pattern centrex centrey)
   (let ((canvas (document.createElement "canvas")))
     (set! canvas.width screen-width)
     (set! canvas.height screen-height)
@@ -194,18 +194,18 @@
       (ctx.arc centrex centrey 500 0 (* 2 Math.PI) #f)
       (set! ctx.fillStyle "#777")
       (ctx.fill)
-      (inner-draw-genome ctx egg centrex centrey 0 0 (* 2 3.141) 65)
+      (inner-draw-genome ctx pattern centrex centrey 0 0 (* 2 3.141) 65)
       (set! ctx.fillStyle "#000"))
     canvas))
 
 
-(define (render-egg-family-tree ancestors)
+(define (render-pattern-family-tree ancestors)
   (map
    (lambda (anc)
-     (egg-drawable (JSON.parse (list-ref (car anc) 1)) #f))
+     (pattern-drawable (JSON.parse (list-ref (car anc) 1)) #f))
    ancestors))
 
-(define (draw-egg-family-tree ctx ancestors eggs)
+(define (draw-pattern-family-tree ctx ancestors patterns)
 
   (let ((w (/ (- screen-width 400) (length ancestors))))
     (set! ctx.fillStyle "#000")
@@ -215,7 +215,7 @@
      (lambda (i anc)
        (let ((x (+ (* i w) 100)))
 
-         (ctx.drawImage (list-ref eggs i) x 250)
+         (ctx.drawImage (list-ref patterns i) x 250)
 
          (fill-centre-text ctx (+ "" (car (car anc)) " " (list-ref (car anc) 2)) x 200)
          (fill-centre-text ctx (+ "" (time-to-seconds (list-ref (car anc) 3))) x 500)
@@ -231,18 +231,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (egglab-data time eggs offset land images username replicate player-time)
-  (list time eggs offset land images username replicate player-time tooltip player-id))
+(define (dazzle-data time patterns offset land images username replicate player-time)
+  (list time patterns offset land images username replicate player-time tooltip player-id))
 
-(define (egglab-data-init land)
+(define (dazzle-data-init land)
   (list 0 () (list 0 0) land () "???" 0 0 "" 0))
 
-(define (egglab-data-init-land d land)
-  (egglab-data-modify-images
-   (egglab-data-modify-land d land)) ())
+(define (dazzle-data-init-land d land)
+  (dazzle-data-modify-images
+   (dazzle-data-modify-land d land)) ())
 
-(define (egglab-data-start-game d player-id time eggs offset replicate)
-  (list time eggs offset
+(define (dazzle-data-start-game d player-id time patterns offset replicate)
+  (list time patterns offset
         (list-ref d 3)
         (list-ref d 4)
         (list-ref d 5)
@@ -250,26 +250,26 @@
         (list-ref d 8)
         player-id))
 
-(define (egglab-data-time d) (list-ref d 0))
-(define (egglab-data-modify-time d v) (list-replace d 0 v))
-(define (egglab-data-eggs d) (list-ref d 1))
-(define (egglab-data-modify-eggs d v) (list-replace d 1 v))
-(define (egglab-data-offset d) (list-ref d 2))
-(define (egglab-data-modify-offset d v) (list-replace d 2 v))
-(define (egglab-data-land d) (list-ref d 3))
-(define (egglab-data-modify-land d v) (list-replace d 3 v))
-(define (egglab-data-images d) (list-ref d 4))
-(define (egglab-data-modify-images d v) (list-replace d 4 v))
-(define (egglab-data-username d) (list-ref d 5))
-(define (egglab-data-modify-username d v) (list-replace d 5 v))
-(define (egglab-data-replicate d) (list-ref d 6))
-(define (egglab-data-modify-replicate d v) (list-replace d 6 v))
-(define (egglab-data-player-time d) (list-ref d 7))
-(define (egglab-data-modify-player-time d v) (list-replace d 7 v))
-(define (egglab-data-tooltip d) (list-ref d 8))
-(define (egglab-data-modify-tooltip d v) (list-replace d 8 v))
-(define (egglab-data-player-id d) (list-ref d 9))
-(define (egglab-data-modify-player-id d v) (list-replace d 9 v))
+(define (dazzle-data-time d) (list-ref d 0))
+(define (dazzle-data-modify-time d v) (list-replace d 0 v))
+(define (dazzle-data-patterns d) (list-ref d 1))
+(define (dazzle-data-modify-patterns d v) (list-replace d 1 v))
+(define (dazzle-data-offset d) (list-ref d 2))
+(define (dazzle-data-modify-offset d v) (list-replace d 2 v))
+(define (dazzle-data-land d) (list-ref d 3))
+(define (dazzle-data-modify-land d v) (list-replace d 3 v))
+(define (dazzle-data-images d) (list-ref d 4))
+(define (dazzle-data-modify-images d v) (list-replace d 4 v))
+(define (dazzle-data-username d) (list-ref d 5))
+(define (dazzle-data-modify-username d v) (list-replace d 5 v))
+(define (dazzle-data-replicate d) (list-ref d 6))
+(define (dazzle-data-modify-replicate d v) (list-replace d 6 v))
+(define (dazzle-data-player-time d) (list-ref d 7))
+(define (dazzle-data-modify-player-time d v) (list-replace d 7 v))
+(define (dazzle-data-tooltip d) (list-ref d 8))
+(define (dazzle-data-modify-tooltip d v) (list-replace d 8 v))
+(define (dazzle-data-player-id d) (list-ref d 9))
+(define (dazzle-data-modify-player-id d v) (list-replace d 9 v))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -284,8 +284,8 @@
         (lambda (c)
           (game-modify-data
            (lambda (d)
-             (egglab-data-modify-images
-              d (append (egglab-data-images d) (list fullpath))))
+             (dazzle-data-modify-images
+              d (append (dazzle-data-images d) (list fullpath))))
            c))
         fullpath)))
    (shuffle l)))
@@ -331,21 +331,19 @@
           (cdr (game-buttons c)))
          (game-flip-mute c))))
 
-     (egglab-button
+     (dazzle-button
       "Play" 600 700 (find-image "button-1.png")
-      "Try and find new eggs. Their camouflage changes as people play."
       (lambda (c)
         (async-load-images c "CF" bg_images)
         (nightjar-research
          "flicker"
          (game-modify-data
           (lambda (d)
-            (egglab-data-init "CF"))
+            (dazzle-data-init "CF"))
           c))))
 
-     (egglab-button
+     (dazzle-button
       "More info" 350 700 (find-image "button-2.png")
-      "Try and find new eggs. Their camouflage changes as people play."
       (lambda (c)
         (nightjar-env c)))
 
@@ -368,7 +366,7 @@
 
 
 
-(define (nightjar-browser-test c eggs)
+(define (nightjar-browser-test c patterns)
   (game-modify-render
    (lambda (ctx)
      (set! ctx.font "normal 30pt 'Press Start 2P'")
@@ -377,13 +375,13 @@
      (set! ctx.fillStyle "#000")
      (ctx.fillRect 400 380 530 160)
      (index-for-each
-      (lambda (i egg)
-        (ctx.drawImage egg (+ 400 (* i 100)) 400))
-      eggs)
+      (lambda (i pattern)
+        (ctx.drawImage pattern (+ 400 (* i 100)) 400))
+      patterns)
 
      (robo-nightjar-says-bottom
       ctx 18
-      (string-append "The top and bottom eggs should look the same. If not, please use a different browser e.g. Chrome.")))
+      (string-append "The top and bottom patterns should look the same. If not, please use a different browser e.g. Chrome.")))
    (game-modify-buttons
     (list
      (image-button
@@ -394,7 +392,7 @@
      )
     c)))
 
-;;(robo-nightjar-says-bottom ctx 20 "Choose which species' nest sites you want to try - I have different eggs for each.")
+;;(robo-nightjar-says-bottom ctx 20 "Choose which species' nest sites you want to try - I have different patterns for each.")
 
 (define (nightjar-about c)
   (game-modify-render
@@ -427,9 +425,8 @@
     (game-modify-buttons
      (list
 
-      (egglab-button
+      (dazzle-button
        "High Scores" 600 200 (find-image "button-1.png")
-       "See if you are on the high scores list."
        (lambda (c)
          (server-call-mutate
           "hiscores"
@@ -439,46 +436,44 @@
             (nightjar-hiscores (JSON.parse data) c)))
          c))
 
-      (egglab-button
+      (dazzle-button
        "Best patterns" 600 400 (find-image "button-2.png")
-       "See my most successful eggs for each species."
        (lambda (c)
          (let ((replicate (random num-replicates)))
            (server-call-mutate
-            "top-eggs"
+            "top-patterns"
             (list
              (list "replicate" replicate)
-             (list "count" num-best-eggs))
+             (list "count" num-best-patterns))
             (lambda (c data)
               (let ((data (JSON.parse data)))
                 (nightjar-best
                  (game-modify-data
                   (lambda (d)
-                    (egglab-data-start-game
-                     d (egglab-data-player-id d) 0
+                    (dazzle-data-start-game
+                     d (dazzle-data-player-id d) 0
                      (make-best-population
                       c (map
                          (lambda (d)
-                           ;; individually parse the egg's code
+                           ;; individually parse the pattern's code
                            (cons (JSON.parse (car d)) (cdr d)))
                          (list-ref data 0))
                       (map
                        (lambda (d)
-                         ;; individually parse the egg's code
+                         ;; individually parse the pattern's code
                          (cons (JSON.parse (car d)) (cdr d)))
                        (list-ref data 1))
                       (map
                        (lambda (d)
-                         ;; individually parse the egg's code
+                         ;; individually parse the pattern's code
                          (cons (JSON.parse (car d)) (cdr d)))
                        (list-ref data 2)))
                      (list 0 0) 0))
                   c) replicate)))))
-         (nightjar-generating-best-eggs c)))
+         (nightjar-generating-best-patterns c)))
 
-      (egglab-button
+      (dazzle-button
        "Difficulty graph" 600 600 (find-image "button-1.png")
-       "This shows how my eggs are becoming more difficult to spot."
         (lambda (c)
           (server-call-mutate
            "get-stats"
@@ -496,12 +491,12 @@
           "flicker"
           (game-modify-data
            (lambda (d)
-             (egglab-data-init "CF"))
+             (dazzle-data-init "CF"))
            c)))))
      c))))
 
 
-(define (nightjar-generating-best-eggs c)
+(define (nightjar-generating-best-patterns c)
   (game-modify-update
    (lambda (t c)
      c)
@@ -627,7 +622,7 @@
    (game-modify-render
     (lambda (ctx)
       (set! ctx.font "normal 30pt 'Press Start 2P'")
-      (wrap-text ctx (string-append "Egg difficulty graph") 0 100 1000 70)
+      (wrap-text ctx (string-append "Pattern difficulty graph") 0 100 1000 70)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
       (draw-fitness-graph ctx table 50 250 1000 500))
 
@@ -654,18 +649,17 @@
     (game-modify-buttons
      (list
 
-     (egglab-button
+     (dazzle-button
       "Start game!" 600 400 (find-image "button-2.png")
-      "Try and find new eggs. Their camouflage changes as people play."
       (lambda (c)
         (let ((replicate (random num-replicates)))
            (server-call-mutate
             "sample"
             (list
-             (list "player-id" (egglab-data-player-id (game-data c)))
-             (list "population" (egglab-data-land (game-data c)))
+             (list "player-id" (dazzle-data-player-id (game-data c)))
+             (list "population" (dazzle-data-land (game-data c)))
              (list "replicate" replicate)
-             (list "count" num-eggs-from-population))
+             (list "count" num-patterns-from-population))
             (lambda (c data)
               (let ((ret (JSON.parse data)))
                 (let ((player-id (cadr (car ret)))
@@ -676,7 +670,7 @@
                                   ()
                                   (map
                                    (lambda (d)
-                                     ;; individually parse the egg's code
+                                     ;; individually parse the pattern's code
                                      (cons (JSON.parse (car d)) (cdr d)))
                                    (cadr samples)))
                               (if (eq? (car samples) "fill") 1 0)
@@ -685,10 +679,10 @@
                      (game-modify-data
                       (lambda (d)
                         (let ((time-now (- (js "new Date()") load-time)))
-                          (egglab-data-start-game
+                          (dazzle-data-start-game
                            d player-id time-now pop (list 0 0) replicate)))
                       c))))))))
-         (nightjar-generating-eggs c)))
+         (nightjar-generating-patterns c)))
 
 
 
@@ -699,7 +693,7 @@
 
      c))))
 
-(define (nightjar-generating-eggs c)
+(define (nightjar-generating-patterns c)
   (game-modify-update
    (lambda (t c)
      c)
@@ -721,7 +715,7 @@
        (wrap-text ctx "Thanks for playing! With your help the bugs will keep getting harder to spot — keep playing and see how they evolve further..." 0 200 1000 50)
 
        (text-flashy-render ctx (string-append "Your average time was: "
-                                              (time-to-seconds (egglab-data-player-time (game-data c)))
+                                              (time-to-seconds (dazzle-data-player-time (game-data c)))
                                               " seconds.")
                            225 400 (game-time c))
 
@@ -735,17 +729,17 @@
         (image-button
          "Continue" (/ screen-width 2) 600 "jumpy" (find-image "button.png")
          (lambda (c)
-           (if (eq? (egglab-data-username (game-data c)) "???")
+           (if (eq? (dazzle-data-username (game-data c)) "???")
                (nightjar-enter-name c)
                (begin
                  (server-call
                   "add-score"
                   (list
-                   (list "player-id" (egglab-data-player-id (game-data c)))
-                   (list "name" (egglab-data-username (game-data c)))
-                   (list "score" (egglab-data-player-time (game-data c)))
-                   (list "population" (egglab-data-land (game-data c)))
-                   (list "replicate" (egglab-data-replicate (game-data c)))))
+                   (list "player-id" (dazzle-data-player-id (game-data c)))
+                   (list "name" (dazzle-data-username (game-data c)))
+                   (list "score" (dazzle-data-player-time (game-data c)))
+                   (list "population" (dazzle-data-land (game-data c)))
+                   (list "replicate" (dazzle-data-replicate (game-data c)))))
                  (nightjar-env c))))))
        c))))))
 
@@ -771,13 +765,13 @@
 (define (type-username ch c)
   (game-modify-data
    (lambda (d)
-     (egglab-data-modify-username d (type-into (egglab-data-username d) ch)))
+     (dazzle-data-modify-username d (type-into (dazzle-data-username d) ch)))
    c))
 
 (define (type-delete c)
   (game-modify-data
    (lambda (d)
-     (egglab-data-modify-username d (type-into-delete (egglab-data-username d))))
+     (dazzle-data-modify-username d (type-into-delete (dazzle-data-username d))))
    c))
 
 (define (nightjar-enter-name c)
@@ -788,7 +782,7 @@
       (set! ctx.font "normal 30pt 'Press Start 2P'")
       (wrap-text ctx "Enter your name" 0 200 1000 70)
       (set! ctx.font "normal 50pt 'Press Start 2P'")
-      (wrap-text ctx (egglab-data-username (game-data c)) 0 280 1000 70)
+      (wrap-text ctx (dazzle-data-username (game-data c)) 0 280 1000 70)
       (set! ctx.font "normal 30pt 'Press Start 2P'"))
 
     (game-modify-buttons
@@ -811,16 +805,16 @@
                        (server-call
                         "add-score"
                         (list
-                         (list "player-id" (egglab-data-player-id (game-data c)))
-                         (list "name" (egglab-data-username (game-data c)))
-                         (list "score" (egglab-data-player-time (game-data c)))
-                         (list "population" (egglab-data-land (game-data c)))
-                         (list "replicate" (egglab-data-replicate (game-data c)))))
+                         (list "player-id" (dazzle-data-player-id (game-data c)))
+                         (list "name" (dazzle-data-username (game-data c)))
+                         (list "score" (dazzle-data-player-time (game-data c)))
+                         (list "population" (dazzle-data-land (game-data c)))
+                         (list "replicate" (dazzle-data-replicate (game-data c)))))
                        (server-call
                         "player"
                         (list
-                         (list "player-id" (egglab-data-player-id (game-data c)))
-                         (list "name" (egglab-data-username (game-data c)))
+                         (list "player-id" (dazzle-data-player-id (game-data c)))
+                         (list "name" (dazzle-data-username (game-data c)))
                          (list "played-before" "#f")
                          (list "age-range" 2)))
                        (nightjar-env c))))
@@ -829,26 +823,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (find-egg drawable pop)
+(define (find-pattern drawable pop)
   (let ((r (filter
-            (lambda (egg)
-              (eq? drawable (individual-drawable egg)))
+            (lambda (pattern)
+              (eq? drawable (individual-drawable pattern)))
             pop)))    (if (null? r) #f (car r))))
 
 (define (time-elapsed c)
-  (- (game-time c) (egglab-data-time (game-data c))))
+  (- (game-time c) (dazzle-data-time (game-data c))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define speed 0.2)
 
-(define (screen-pos c egg)
+(define (screen-pos c pattern)
   (- screen-width
-     (+ (car (individual-pos egg))
+     (+ (car (individual-pos pattern))
         (car (game-world-offset c)))))
 
-(define (fitness c egg)
-  (/ (screen-pos c egg) speed))
+(define (fitness c pattern)
+  (/ (screen-pos c pattern) speed))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -856,8 +850,8 @@
 (define (reset-images c)
   (game-modify-data
    (lambda (d)
-     (let ((land (egglab-data-land (game-data c))))
-       (egglab-data-modify-images
+     (let ((land (dazzle-data-land (game-data c))))
+       (dazzle-data-modify-images
         d (map
            (lambda (i)
              (bg-full-path land i))
@@ -867,52 +861,52 @@
              (else (msg "oops") bg_images)))))))
    c))
 
-(define (egglab-add-time t d)
-  (egglab-data-modify-player-time
-   d (+ t (egglab-data-player-time d))))
+(define (dazzle-add-time t d)
+  (dazzle-data-modify-player-time
+   d (+ t (dazzle-data-player-time d))))
 
-(define (egglab-finish-time t d)
-  (egglab-data-modify-player-time
-   d (/ (+ t (egglab-data-player-time d)) num-eggs-total)))
+(define (dazzle-finish-time t d)
+  (dazzle-data-modify-player-time
+   d (/ (+ t (dazzle-data-player-time d)) num-patterns-total)))
 
-(define (submit-egg egg c)
+(define (submit-pattern pattern c)
   (server-call
    "add"
    (list
-    (list "phase" (individual-phase egg))
-    (list "population" (egglab-data-land (game-data c)))
-    (list "replicate" (egglab-data-replicate (game-data c)))
-    (list "egg-id" (individual-id egg))
-    (list "player-id" (egglab-data-player-id (game-data c)))
+    (list "phase" (individual-phase pattern))
+    (list "population" (dazzle-data-land (game-data c)))
+    (list "replicate" (dazzle-data-replicate (game-data c)))
+    (list "pattern-id" (individual-id pattern))
+    (list "player-id" (dazzle-data-player-id (game-data c)))
     (list "fitness" (time-elapsed c))
-    (list "parent" (individual-parent egg))
-    (list "image" (car (egglab-data-images (game-data c))))
-    (list "x-pos" (car (individual-pos egg)))
-    (list "y-pos" (cadr (individual-pos egg)))
-    (list "genotype" (JSON.stringify (individual-egg egg))))))
+    (list "parent" (individual-parent pattern))
+    (list "image" (car (dazzle-data-images (game-data c))))
+    (list "x-pos" (car (individual-pos pattern)))
+    (list "y-pos" (cadr (individual-pos pattern)))
+    (list "genotype" (JSON.stringify (individual-pattern pattern))))))
 
-(define (build-next-egg c)
-  (if (eq? (length (egglab-data-eggs (game-data c))) 1)
+(define (build-next-pattern c)
+  (if (eq? (length (dazzle-data-patterns (game-data c))) 1)
       (game-modify-data
        (lambda (d)
-         (egglab-finish-time (time-elapsed c) d))
+         (dazzle-finish-time (time-elapsed c) d))
        (reset-images (nightjar-thanks c)))
       (game-modify-buttons
        (list
-        (flicker-build-egg
+        (flicker-build-pattern
          (game-modify-data
           (lambda (d)
-            (egglab-add-time
+            (dazzle-add-time
              (time-elapsed c)
-             (egglab-data-modify-images
-              (egglab-data-modify-offset
-               (egglab-data-modify-eggs
-                (egglab-data-modify-time
+             (dazzle-data-modify-images
+              (dazzle-data-modify-offset
+               (dazzle-data-modify-patterns
+                (dazzle-data-modify-time
                  d
                  (game-time c))
-                (cdr (egglab-data-eggs d)))
+                (cdr (dazzle-data-patterns d)))
                (list 0 0))
-              (cdr (egglab-data-images d)))))
+              (cdr (dazzle-data-images d)))))
           c)))
        c)))
 
@@ -956,36 +950,36 @@
        (animated-button-modify-time
         b (+ (animated-button-time b) (game-delta c))))))
 
-(define (flicker-build-egg c)
-  (let ((egg (car (egglab-data-eggs (game-data c)))))
-    (let ((pos (individual-pos egg)))
+(define (flicker-build-pattern c)
+  (let ((pattern (car (dazzle-data-patterns (game-data c)))))
+    (let ((pos (individual-pos pattern)))
       (animated-button
        "" (car pos) (cadr pos)
        (hcrndvec 300)
-       #f (individual-drawable egg)
+       #f (individual-drawable pattern)
        ;; animate function
        (lambda (b)
          (button-move-bounce
           (button-do-direction b c) c))
        ;; clicked function
        (lambda (c)
-         (submit-egg egg c)
+         (submit-pattern pattern c)
          (stop-idle)
 
          (let ((t (seconds-taken c)))
            ;; kinda in the constructor for this, but need to get it from the game
-           (let ((egg-button (car (game-buttons c))))
+           (let ((pattern-button (car (game-buttons c))))
              (server-call
               "add-click"
               (list
-               (list "player_id" (egglab-data-player-id (game-data c)))
-               (list "egg_id" (individual-id egg))
+               (list "player_id" (dazzle-data-player-id (game-data c)))
+               (list "pattern_id" (individual-id pattern))
                (list "mouse_x" (game-mx c))
                (list "mouse_y" (game-my c))
-               (list "target_x" (button-x egg-button))
-               (list "target_y" (button-y egg-button))
-               (list "target_dir_x" (car (animated-button-dir egg-button)))
-               (list "target_dir_y" (cadr (animated-button-dir egg-button)))
+               (list "target_x" (button-x pattern-button))
+               (list "target_y" (button-y pattern-button))
+               (list "target_dir_x" (car (animated-button-dir pattern-button)))
+               (list "target_dir_y" (cadr (animated-button-dir pattern-button)))
                (list "success" 1))))
 
            (nightjar-flicker-result
@@ -999,24 +993,24 @@
   (game-modify-mouse-hook
    (lambda (type c)
      (if (eq? type "down")
-           (let ((egg (car (egglab-data-eggs (game-data c))))
-                 (egg-button (car (game-buttons c))))
+           (let ((pattern (car (dazzle-data-patterns (game-data c))))
+                 (pattern-button (car (game-buttons c))))
 
-             ;; if the egg button has gone, then it's been eaten
+             ;; if the pattern button has gone, then it's been eaten
              ;; and the click will already have been reported
-             (cond (egg-button
+             (cond (pattern-button
                     ;;(play-sound (string-append "shreak-" (+ 1 (random 5)) ".wav"))
                     (server-call
                      "add-click"
                      (list
-                      (list "player_id" (egglab-data-player-id (game-data c)))
-                      (list "egg_id" (individual-id egg))
+                      (list "player_id" (dazzle-data-player-id (game-data c)))
+                      (list "pattern_id" (individual-id pattern))
                       (list "mouse_x" (game-mx c))
                       (list "mouse_y" (game-my c))
-                      (list "target_x" (button-x egg-button))
-                      (list "target_y" (button-y egg-button))
-                      (list "target_dir_x" (car (animated-button-dir egg-button)))
-                      (list "target_dir_y" (cadr (animated-button-dir egg-button)))
+                      (list "target_x" (button-x pattern-button))
+                      (list "target_y" (button-y pattern-button))
+                      (list "target_dir_x" (car (animated-button-dir pattern-button)))
+                      (list "target_dir_y" (cadr (animated-button-dir pattern-button)))
                       (list "success" 0)))
                    (game-modify-buttons
                     (list (animated-button-modify-state (car (game-buttons c)) "panic"))
@@ -1030,37 +1024,37 @@
        c)
       (else
        ;; don't submit ones not clicked on???
-       (submit-egg (car (egglab-data-eggs (game-data c))) c)
+       (submit-pattern (car (dazzle-data-patterns (game-data c))) c)
        (play-sound (string-append "fail.wav"))
        (stop-idle)
        (play-idle)
-       (build-next-egg c))))
+       (build-next-pattern c))))
    (game-modify-render
     (lambda (ctx)
       (ctx.drawImage
-       (find-image (car (egglab-data-images (game-data c))))
-       (- 0 (car (egglab-data-offset (game-data c))))
-       (- 0 (cadr (egglab-data-offset (game-data c)))))
+       (find-image (car (dazzle-data-images (game-data c))))
+       (- 0 (car (dazzle-data-offset (game-data c))))
+       (- 0 (cadr (dazzle-data-offset (game-data c)))))
       (set! ctx.font "normal 30pt 'Press Start 2P'"))
     (game-modify-postrender
      (lambda (ctx)
        (nightjar-draw-clock ctx (seconds-taken c) photo-time-allowed))
      (game-modify-buttons
       (list
-       (flicker-build-egg c))
+       (flicker-build-pattern c))
       c))))))
 
 (define (nightjar-flicker-result c time text pos dir end-time)
   (game-modify-update
    (lambda (t c)
      (if (> t end-time)
-         (build-next-egg (nightjar-flicker-game c))
+         (build-next-pattern (nightjar-flicker-game c))
          c))
    (game-modify-render
     (lambda (ctx)
-      (ctx.drawImage (find-image (car (egglab-data-images (game-data c))))
-                     (- 0 (car (egglab-data-offset (game-data c))))
-                     (- 0 (cadr (egglab-data-offset (game-data c)))))
+      (ctx.drawImage (find-image (car (dazzle-data-images (game-data c))))
+                     (- 0 (car (dazzle-data-offset (game-data c))))
+                     (- 0 (cadr (dazzle-data-offset (game-data c)))))
       (nightjar-draw-clock ctx time photo-time-allowed)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
       (set! ctx.font "normal 30pt 'Press Start 2P'"))
@@ -1105,26 +1099,26 @@
         (lambda (c) (nightjar-env c))))
 
       (map
-       (lambda (best-egg)
-         (let ((egg (car best-egg))
-               (fitness (cadr best-egg)))
-           (let ((pos (individual-pos egg)))
+       (lambda (best-pattern)
+         (let ((pattern (car best-pattern))
+               (fitness (cadr best-pattern)))
+           (let ((pos (individual-pos pattern)))
              (image-button
               "" (car pos) (cadr pos) #f
-              (individual-drawable egg)
+              (individual-drawable pattern)
               (lambda (c)
                 (server-call-mutate
                  "family-tree"
-                 (list (list "id" (individual-id egg))) ;; only works for the viz screens
+                 (list (list "id" (individual-id pattern))) ;; only works for the viz screens
                  (lambda (c data)
                    (let ((d (reverse (crop (JSON.parse data) 10))))
-                     (nightjar-family-tree c replicate egg d
-                                           (render-egg-family-tree d)))))
+                     (nightjar-family-tree c replicate pattern d
+                                           (render-pattern-family-tree d)))))
                 c)))))
-       (egglab-data-eggs (game-data c))))
+       (dazzle-data-patterns (game-data c))))
      c))))
 
-(define (nightjar-family-tree c replicate egg ancestors eggs)
+(define (nightjar-family-tree c replicate pattern ancestors patterns)
   (game-modify-render
    (lambda (ctx)
 
@@ -1160,24 +1154,24 @@
         (nightjar-best c replicate)))
 
       (index-map
-       (lambda (i egg)
+       (lambda (i pattern)
          (let ((pos (+ 150 (* i 100))))
            (image-button
             "" pos 250 #f
-            egg
+            pattern
             (lambda (c)
               (let ((genome (JSON.parse (list-ref (car (list-ref ancestors i)) 1))))
-                (nightjar-egg-view
-                 c replicate egg ancestors eggs
-                 (render-egg-genome
+                (nightjar-pattern-view
+                 c replicate pattern ancestors patterns
+                 (render-pattern-genome
                   ctx genome
                   (/ screen-width 2) (/ screen-height 2))
                  genome))))))
-       eggs)
+       patterns)
      )
     c)))
 
-(define (nightjar-egg-view c replicate egg ancestors eggs image genome)
+(define (nightjar-pattern-view c replicate pattern ancestors patterns image genome)
   (game-modify-render
    (lambda (ctx)
      (set! ctx.font "normal 30pt 'Press Start 2P'")
@@ -1188,40 +1182,40 @@
      (image-button
       "Back" 1150 720 "jumpy" (find-image "button.png")
       (lambda (c)
-        (nightjar-family-tree c replicate egg ancestors eggs)))
+        (nightjar-family-tree c replicate pattern ancestors patterns)))
      (image-button
       "Mutate test" 150 720 "jumpy" (find-image "button.png")
       (lambda (c)
-        (nightjar-test c replicate egg ancestors eggs image genome
+        (nightjar-test c replicate pattern ancestors patterns image genome
                        (build-list
                         (* 8 7)
                         (lambda (i)
-                          (egg-drawable (egg-mutate genome (calc-mutation-rate)) #f))
+                          (pattern-drawable (pattern-mutate genome (calc-mutation-rate)) #f))
                         ))))
      )
     c)))
 
 
-(define (nightjar-test c replicate egg ancestors eggs image genome vars)
+(define (nightjar-test c replicate pattern ancestors patterns image genome vars)
   (game-modify-render
    (lambda (ctx)
      (set! ctx.font "normal 20pt 'Press Start 2P'")
-     (wrap-text ctx "This screen shows the range of mutations possible for this egg." 0 100 1000 1000)
+     (wrap-text ctx "This screen shows the range of mutations possible for this pattern." 0 100 1000 1000)
      (set! ctx.font "normal 30pt 'Press Start 2P'")
      (index-for-each
-      (lambda (i egg)
-        (ctx.drawImage egg
+      (lambda (i pattern)
+        (ctx.drawImage pattern
                        (+ 200 (* 100 (modulo i 8)))
                        (+ 100 (* 100 (Math.floor (/ i 8))))))
       vars)
-     ;;(draw-egg-family-tree ctx ancestors eggs)
+     ;;(draw-pattern-family-tree ctx ancestors patterns)
      (ctx.fillText "Mutation test" 20 50))
    (game-modify-buttons
     (list
      (image-button
       "Back" 1150 720 "jumpy" (find-image "button.png")
       (lambda (c)
-        (nightjar-egg-view c replicate egg ancestors eggs image genome)))
+        (nightjar-pattern-view c replicate pattern ancestors patterns image genome)))
      )
     c)))
 
@@ -1276,21 +1270,13 @@
    "button-2.png"
    "button-3.png"
    "button-small.png"
-   "play-button.png"
    "mute-on.png"
    "mute-off.png"
-   "egg.png"
-   "eggs.jpg"
-   "bubble.png"
-   "bubble2.png"
-   "bubble4.png"
-   "yes.png"
-   "no.png"
-   "cu.png"
+   "pattern.png"
    "foam.png"
    "browser-check.png"
    )
-  egg-images)
+  pattern-images)
  (lambda ()
    (start-game canvas ctx)))
 
