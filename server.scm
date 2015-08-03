@@ -245,7 +245,8 @@
           (string->number replicate)
           (get-state db "slow" replicate "generation"))
          (pluto-response
-          (scheme->json '("ok")))))))
+          (scheme->json
+           (get-score-rank db score)))))))
 
    (register
     (req 'hiscores '(count))

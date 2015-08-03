@@ -141,6 +141,14 @@
            (list (vector-ref i 0) (vector-ref i 1) (vector-ref i 2)))
          (cdr s)))))
 
+(define (get-score-rank db score)
+  (vector-ref
+   (cadr
+    (select
+     db
+     "select count(*) from high_scores where average_score < ? order by average_score"
+     score)) 0))
+
 (define (get-egghunt db egghunt-id)
   (let ((s (select
             db (string-append

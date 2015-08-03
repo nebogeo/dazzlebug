@@ -22,7 +22,7 @@
 (load "scm/nightjar.jscm")
 (load "scm/dazzle-common.jscm")
 
-(define num-patterns-per-population 7)
+(define num-patterns-per-population 1)
 (define num-patterns-total (* num-patterns-per-population 3))
 (define num-best-patterns 16)
 (define selection-pop-size 256)
@@ -718,7 +718,7 @@
       (wrap-text ctx "Generating camouflage... GET READY TO PLAY!" 0 250 600 60))
     (game-modify-buttons (list) c))))
 
-(define (nightjar-thanks c)
+(define (nightjar-thanks rank c)
   (stop-idle)
   (game-modify-mouse-hook
    (lambda (type c) c)
@@ -731,8 +731,13 @@
        (set! ctx.font "normal 40pt 'Press Start 2P'")
        (text-flashy-render ctx (string-append "Your average time was: "
                                               (time-to-seconds (dazzle-data-player-time (game-data c)))
-                                              " seconds.")
-                           150 400 (game-time c))
+                                              " seconds")
+                           170 400 (game-time c))
+       (if (eq? rank "none")
+           (text-flashy-render ctx (string-append "Calculating high score.......")
+                               240 460 (game-time c))
+           (text-flashy-render ctx (string-append "Your high score position is: " (+ rank 1))
+                               240 460 (game-time c)))
 
        (set! ctx.font "normal 15pt 'Press Start 2P'"))
 
@@ -754,7 +759,30 @@
                    (list "name" (dazzle-data-username (game-data c)))
                    (list "score" (dazzle-data-player-time (game-data c)))
                    (list "replicate" (dazzle-data-replicate (game-data c)))))
-                 (nightjar-env c))))))
+                 (nightjar-env c)))))
+
+
+        (image-button
+         "Post your score" (- (/ screen-width 2) 300) 600 "jumpy" (find-image "button-2.png")
+         (lambda (c)
+           (window.prompt
+            "This is your score, copy to clipboard: Ctrl+C, Enter"
+            (string-append
+             "I scored " (time-to-seconds (dazzle-data-player-time (game-data c)))
+             " seconds and won a high score position of " (+ rank 1) " in Dazzle Bug <INSERT URL>"))
+           c))
+
+        (image-button
+         "Tweet your score" (+ (/ screen-width 2) 300) 600 "jumpy" (find-image "button-1.png")
+         (lambda (c)
+           (set! window.location (string-append
+                                  "http://twitter.com/home?status="
+                                  "I scored " (time-to-seconds (dazzle-data-player-time (game-data c)))
+                                  " seconds and won a high score position of " (+ rank 1) " in Dazzle Bug <INSERT URL>"))
+           c))
+
+
+        )
        c))))))
 
 (define (type-into str ch)
@@ -898,12 +926,25 @@
     (list "y-pos" (cadr (individual-pos pattern)))
     (list "genotype" (JSON.stringify (individual-pattern pattern))))))
 
+(define (nightjar-get-rank c)
+  (server-call-mutate
+   "add-score"
+   (list
+    (list "player-id" (dazzle-data-player-id (game-data c)))
+    (list "name" (dazzle-data-username (game-data c)))
+    (list "score" (dazzle-data-player-time (game-data c)))
+    (list "replicate" (dazzle-data-replicate (game-data c))))
+   (lambda (c data)
+     (nightjar-thanks (JSON.parse data) c)))
+  (nightjar-thanks "none" c))
+
 (define (build-next-pattern c)
   (if (eq? (length (dazzle-data-patterns (game-data c))) 1)
-      (game-modify-data
-       (lambda (d)
-         (dazzle-finish-time (time-elapsed c) d))
-       (reset-images (nightjar-thanks c)))
+      (nightjar-get-rank
+       (game-modify-data
+        (lambda (d)
+          (dazzle-finish-time (time-elapsed c) d))
+        (reset-images c)))
       (game-modify-buttons
        (list
         (flicker-build-pattern
