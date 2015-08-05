@@ -414,8 +414,6 @@
      )
     c)))
 
-;;(robo-nightjar-says-bottom ctx 20 "Choose which species' nest sites you want to try - I have different patterns for each.")
-
 (define (nightjar-about c)
   (game-modify-render
    (lambda (ctx)
@@ -533,7 +531,7 @@
      c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-says ctx 20 "Please wait while I calculate the best patterns from one of the populations for you..."))
+      (robo-nightjar-says ctx 20 "Please wait while we calculate the best patterns from one of the populations for you..."))
     (game-modify-buttons (list) c))))
 
 
