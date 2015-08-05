@@ -770,16 +770,7 @@
          (lambda (c)
            (if (eq? (dazzle-data-username (game-data c)) "???")
                (nightjar-enter-name c)
-               (begin
-                 (server-call
-                  "add-score"
-                  (list
-                   (list "player-id" (dazzle-data-player-id (game-data c)))
-                   (list "name" (dazzle-data-username (game-data c)))
-                   (list "score" (dazzle-data-player-time (game-data c)))
-                   (list "replicate" (dazzle-data-replicate (game-data c)))))
-                 (nightjar-env c)))))
-
+               (nightjar-env c))))
 
         (image-button
          "Post your score" (- (/ screen-width 2) 300) 600 "jumpy" (find-image "button-2.png")
@@ -946,6 +937,7 @@
     (list "genotype" (JSON.stringify (individual-pattern pattern))))))
 
 (define (nightjar-get-rank c)
+  ;; wont add for new, players but still gets rank (will be called after name entry)
   (server-call-mutate
    "add-score"
    (list
@@ -1059,7 +1051,8 @@
                (list "target_y" (button-y pattern-button))
                (list "target_dir_x" (car (animated-button-dir pattern-button)))
                (list "target_dir_y" (cadr (animated-button-dir pattern-button)))
-               (list "success" 1))))
+               (list "success" 1)
+               (list "seconds_taken" t))))
 
            (nightjar-flicker-result
             c t (result-text t)
@@ -1090,7 +1083,8 @@
                       (list "target_y" (button-y pattern-button))
                       (list "target_dir_x" (car (animated-button-dir pattern-button)))
                       (list "target_dir_y" (cadr (animated-button-dir pattern-button)))
-                      (list "success" 0)))
+                      (list "success" 0)
+                      (list "seconds_taken" (seconds-taken c))))
                    (game-modify-buttons
                     (list (animated-button-modify-state (car (game-buttons c)) "panic"))
                     c))

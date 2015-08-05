@@ -40,6 +40,8 @@
 (define db (open-db db-name))
 (open-log "log.txt")
 
+(update-global-info db)
+
 ;; (dbg (get-family-tree db (list 164 #f)))
 
 (define sema (make-semaphore 1))
@@ -86,8 +88,8 @@
          (escape-quotes genotype))))))))
 
    (register
-    (req 'add-click '(player_id pattern_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success))
-    (lambda (player_id pattern_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success)
+    (req 'add-click '(player_id pattern_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success seconds_taken))
+    (lambda (player_id pattern_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success seconds_taken)
       (syncro
        (lambda ()
          (pluto-response
@@ -102,7 +104,8 @@
             (string->number target_y)
             (string->number target_dir_x)
             (string->number target_dir_y)
-            (string->number success))))))))
+            (string->number success)
+            (string->number seconds_taken))))))))
 
    (register
     (req 'sample '(player-id replicate count))
@@ -233,14 +236,15 @@
     (lambda (player-id name score replicate)
       (syncro
        (lambda ()
-         (insert-score
-          db
-          (string->number player-id)
-          name
-          (string->number score)
-          ""
-          (string->number replicate)
-          (get-state db "slow" replicate "generation"))
+         (when (not (equal? name "???"))
+               (insert-score
+                db
+                (string->number player-id)
+                name
+                (string->number score)
+                ""
+                (string->number replicate)
+                (get-state db "slow" replicate "generation")))
          (pluto-response
           (scheme->json
            (get-score-rank db score)))))))

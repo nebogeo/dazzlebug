@@ -88,9 +88,33 @@
            (cdr s)))
     (exec/ignore db "end transaction")))
 
+(define (control-fitness db player-id fitness)
+  (let ((played/average (get-player-played/average db player-id)))
+    (cond
+     ;; not in database or played before - pass through
+     ((or (null? played/average)
+          (eq? (car (car played/average)) 0))
+      (msg "fitness control pass-through")
+      fitness)
+     (else
+      (let* ((info (car played/average))
+             (times-played (car info))
+             (acc-average (cadr info))
+             (average-time (/ acc-average times-played)))
+        (msg "fitness control: average-time" average-time)
+        fitness)))))
+
+(define clock 0)
+
 (define (pop-add db population replicate egg-phase egg-id player-id fitness parent image x-pos y-pos genotype)
   (let ((phase (get-state db population replicate "phase"))
-        (timestamp (timestamp-now)))
+        (timestamp (timestamp-now))
+        (fitness (control-fitness db player-id fitness)))
+
+    ;; tick the update here...
+    (set! clock (+ clock 1))
+    (when (zero? (modulo clock 10)) (update-global-info db))
+
     (cond
      ((not (equal? phase egg-phase))
       (msg "rejecting egg - phase has changed"))
@@ -385,6 +409,25 @@
            (+ r (count-decendents db (vector-ref i 0))))
          1
          (cdr s)))))
+
+
+(define (calc-player-average db)
+  (let ((s (select db "select avg(acc_average/games_played) from player where games_played>0")))
+    (if (null? s)
+        '()
+        (car
+         (map
+          (lambda (i)
+            (list (vector-ref i 0)))
+          (cdr s))))))
+
+(define (update-global-info db)
+  (let ((player-average (calc-player-average db)))
+    (when (not (null? player-average))
+          (let ((player-average (car player-average)))
+            (msg "global player average now: " player-average)
+            (exec/ignore db "insert or replace into global_info (id, player_average) values (1, ?)"
+                         player-average)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

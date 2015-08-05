@@ -20,20 +20,20 @@
 (require racket/date)
 
 (define (setup db)
+  (exec/ignore db "create table global_info ( id integer primary key autoincrement, player_average real)")
   (exec/ignore db "create table state ( id integer primary key autoincrement, population varchar, replicate integer, phase varchar, read_head integer, generation integer)")
   (exec/ignore db "create table egg ( id integer primary key autoincrement, population varchar, replicate integer, time_stamp varchar, player_id integer, fitness real, tests integer, generation integer, parent integer, image varchar, x_pos real, y_pos real, genotype varchar )")
-  (exec/ignore db "create table player ( id integer primary key autoincrement, time_stamp varchar, name varchar, played_before integer, age_range integer )")
+  (exec/ignore db "create table player ( id integer primary key autoincrement, time_stamp varchar, name varchar, played_before integer, age_range integer, games_played integer, acc_average real )")
   (exec/ignore db "create table egghunt ( id integer primary key autoincrement, background varchar, challenger varchar, message varchar, score integer, timestamp varchar)")
   (exec/ignore db "create table egghunt_egg ( id integer primary key autoincrement, egghunt_id integer, egg_id integer, x integer, y integer)")
   (exec/ignore db "create table high_scores ( id integer primary key autoincrement, player_id int, player_name varchar, average_score real, population varchar, replicate int, generation int )")
-  (exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer )")
+  (exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer, seconds_taken real )")
 
   ;;  (exec/ignore db "create table egghunt_score ( id integer primary key autoincrement. egghunt_id integer, egg_id integer, est_clicked_time integer)")
   )
 
 (define (update db)
   (exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer )"))
-
 
 ;; initialise the state
 (define (check/init-state db population replicate)
@@ -73,8 +73,8 @@
 
 (define (insert-player db time-stamp name played-before age-range)
   (insert
-   db "insert into player values (null, ?, ?, ?, ?)"
-   time-stamp name (if (equal? played-before "false") "0" "1") age-range))
+   db "insert into player values (null, ?, ?, ?, ?, ?, ?)"
+   time-stamp name (if (equal? played-before "false") "0" "1") age-range 0 0))
 
 (define (update-player db player-id name played-before age-range)
   (exec/ignore
@@ -83,6 +83,9 @@
    player-id))
 
 (define (insert-score db player-id name average-score population replicate generation)
+  (exec/ignore
+   db "update player set games_played=games_played+1, acc_average=acc_average+? where id = ?"
+   average-score player-id)
   (exec/ignore
    db "insert into high_scores values (null, ?, ?, ?, ?, ?, ?)"
    player-id name average-score population replicate generation))
@@ -102,10 +105,10 @@
    db "insert into egghunt_egg values (NULL, ?, ?, ?, ?)"
    egghunt-id egg-id x y))
 
-(define (insert-performance db player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success)
+(define (insert-performance db player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success seconds_taken)
   (insert
-   db "insert into performance values (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-   (timestamp-now) player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success))
+   db "insert into performance values (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+   (timestamp-now) player_id egg_id mouse_x mouse_y target_x target_y target_dir_x target_dir_y success seconds_taken))
 
 (define (ms->frac ms)
   (modulo (inexact->exact (round ms)) 1000))
@@ -147,6 +150,18 @@
      db
      "select count(*) from high_scores where average_score < ? order by average_score"
      score)) 0))
+
+(define (get-player-played/average db player-id)
+  (let ((s (select
+            db "select p.games_played, p.acc_average from player as p where p.id = ?"
+            player-id)))
+    (if (null? s)
+        '()
+        (map
+         (lambda (i)
+           (list (vector-ref i 0)
+                 (vector-ref i 1)))
+         (cdr s)))))
 
 (define (get-egghunt db egghunt-id)
   (let ((s (select
