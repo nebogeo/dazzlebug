@@ -394,7 +394,7 @@
    (game-modify-buttons
     (list
      (image-button
-      "Back" 1150 720 "jumpy" (find-image "button.png")
+      "Back" 1100 720 "jumpy" (find-image "button.png")
       (lambda (c)
         (nightjar-menu c)))
 
@@ -414,7 +414,7 @@
    (game-modify-buttons
     (list
     (image-button
-     "Back" 1150 720 "jumpy" (find-image "button.png")
+     "Back" 1100 720 "jumpy" (find-image "button.png")
      (lambda (c) (nightjar-choose-location c))))
     c)))
 
@@ -548,7 +548,7 @@
     (game-modify-buttons
      (list
       (image-button
-       "Back" 1150 720 "jumpy" (find-image "button.png")
+       "Back" 1100 720 "jumpy" (find-image "button.png")
        (lambda (c) (nightjar-env c))))
      c))))
 
@@ -647,7 +647,7 @@
     (game-modify-buttons
      (list
       (image-button
-       "Back" 1150 720 "jumpy" (find-image "button.png")
+       "Back" 1100 720 "jumpy" (find-image "button.png")
        (lambda (c) (nightjar-env c))))
      c))))
 
@@ -1167,7 +1167,7 @@
       (list
 
        (image-button
-        "Back" 1150 720 "jumpy" (find-image "button.png")
+        "Back" 1100 720 "jumpy" (find-image "button.png")
         (lambda (c) (nightjar-env c))))
 
       (map
@@ -1221,7 +1221,7 @@
    (game-modify-buttons
     (cons
      (image-button
-      "Back" 1150 720 "jumpy" (find-image "button.png")
+      "Back" 1100 720 "jumpy" (find-image "button.png")
       (lambda (c)
         (nightjar-best c replicate)))
 
@@ -1252,7 +1252,7 @@
    (game-modify-buttons
     (list
      (image-button
-      "Back" 1150 720 "jumpy" (find-image "button.png")
+      "Back" 1100 720 "jumpy" (find-image "button.png")
       (lambda (c)
         (nightjar-family-tree c replicate pattern ancestors patterns)))
      (image-button
@@ -1285,7 +1285,7 @@
    (game-modify-buttons
     (list
      (image-button
-      "Back" 1150 720 "jumpy" (find-image "button.png")
+      "Back" 1100 720 "jumpy" (find-image "button.png")
       (lambda (c)
         (nightjar-pattern-view c replicate pattern ancestors patterns image genome)))
      )
