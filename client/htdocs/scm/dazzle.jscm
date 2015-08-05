@@ -22,7 +22,7 @@
 (load "scm/nightjar.jscm")
 (load "scm/dazzle-common.jscm")
 
-(define num-patterns-per-population 1)
+(define num-patterns-per-population 7)
 (define num-patterns-total (* num-patterns-per-population 3))
 (define num-best-patterns 16)
 (define selection-pop-size 256)
@@ -315,14 +315,14 @@
   (game-modify-render
    (lambda (ctx)
        (set! ctx.fillStyle "#000")
-       (ctx.drawImage (find-image "intro.png") 20 50)
+       (ctx.drawImage (find-image "intro.png") 20 0)
        (set! ctx.font "normal 40pt 'Press Start 2P'")
        (set! ctx.font "normal 15pt 'Press Start 2P'")
        )
    (game-modify-buttons
     (list
      (image-button
-      "Sound" 1120 700 "jumpy"
+      "Sound" 1120 620 "jumpy"
       (if (zero? (game-mute c))
           (find-image "mute-off.png")
           (find-image "mute-on.png"))
@@ -338,7 +338,7 @@
          (game-flip-mute c))))
 
      (dazzle-button
-      "Play" 600 700 (find-image "button-1.png")
+      "Play" 600 620 (find-image "button-1.png")
       (lambda (c)
         (async-load-images c bg_images)
         (nightjar-research
@@ -349,7 +349,7 @@
           c))))
 
      (dazzle-button
-      "More info" 350 700 (find-image "button-2.png")
+      "More info" 350 620 (find-image "button-2.png")
       (lambda (c)
         (nightjar-env
          (game-modify-data
@@ -358,7 +358,7 @@
           c))))
 
     (image-button
-     "Browser check" 850 700 "jumpy" (find-image "button-3.png")
+     "Browser check" 850 620 "jumpy" (find-image "button-3.png")
      (lambda (c)
        c))
 
@@ -424,9 +424,12 @@
    (lambda (t c) c)
    (game-modify-render
     (lambda (ctx)
-      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (set! ctx.font "normal 35pt 'Press Start 2P'")
       (wrap-text
-       ctx (string-append "Pattern information") 0 100 1000 60)
+       ctx (string-append "Why do we need to know about camouflage?") 0 60 2000 60)
+
+      (ctx.drawImage (find-image "info1.png") 20 80)
+
       (set! ctx.font "normal 15pt 'Press Start 2P'")
       (set! ctx.fillStyle "#000")
       )
@@ -435,7 +438,7 @@
      (list
 
       (dazzle-button
-       "High Scores" 600 200 (find-image "button-1.png")
+       "High Scores" 140 720 (find-image "button-1.png")
        (lambda (c)
          (server-call-mutate
           "hiscores"
@@ -446,7 +449,7 @@
          c))
 
       (dazzle-button
-       "Best patterns" 600 400 (find-image "button-2.png")
+       "Best patterns" 430 720 (find-image "button-2.png")
        (lambda (c)
          (let ((replicate (random num-replicates)))
            (server-call-mutate
@@ -482,7 +485,7 @@
          (nightjar-generating-best-patterns c)))
 
       (dazzle-button
-       "Difficulty graph" 600 600 (find-image "button-1.png")
+       "Difficulty graph" 720 720 (find-image "button-1.png")
         (lambda (c)
           (server-call-mutate
            "get-stats"
@@ -493,16 +496,21 @@
 
 
       (image-button
-       "Play again!" 1100 720 "jumpy" (find-image "button-3.png")
+       "Play again!" 1010 720 "jumpy" (find-image "button-3.png")
        (lambda (c)
          (async-load-images c bg_images)
-         (msg (game-data c))
          (nightjar-research
           "flicker" c
           (game-modify-data
            (lambda (d)
              (dazzle-data-init-land d "CF"))
-           c)))))
+           c))))
+
+      (dazzle-button
+       "More info..." 1150 650 (find-image "more.png")
+       (lambda (c)
+         c)))
+
      c))))
 
 
@@ -766,10 +774,10 @@
          "Post your score" (- (/ screen-width 2) 300) 600 "jumpy" (find-image "button-2.png")
          (lambda (c)
            (window.prompt
-            "This is your score, copy to clipboard: Ctrl+C, Enter"
+            "This is your score, copy with Ctrl+C and paste into your social stream!"
             (string-append
              "I scored " (time-to-seconds (dazzle-data-player-time (game-data c)))
-             " seconds and won a high score position of " (+ rank 1) " in Dazzle Bug <INSERT URL>"))
+             " seconds and won a high score position of " (+ rank 1) " in Dazzle Bug http://www.dazzle-bug.co.uk"))
            c))
 
         (image-button
@@ -778,7 +786,7 @@
            (set! window.location (string-append
                                   "http://twitter.com/home?status="
                                   "I scored " (time-to-seconds (dazzle-data-player-time (game-data c)))
-                                  " seconds and won a high score position of " (+ rank 1) " in Dazzle Bug <INSERT URL>"))
+                                  " seconds and won a high score position of " (+ rank 1) " in Dazzle Bug http://www.dazzle-bug.co.uk"))
            c))
 
 
@@ -1329,6 +1337,8 @@
  (append
   (list
    "intro.png"
+   "info1.png"
+   "more.png"
    "button.png"
    "button-1.png"
    "button-2.png"

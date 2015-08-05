@@ -37,7 +37,6 @@
 
 ;; initialise the state
 (define (check/init-state db population replicate)
-  (msg population replicate)
   (let ((s (select db "select * from state where population=? and replicate=?"
                    population replicate)))
     (when (null? s)

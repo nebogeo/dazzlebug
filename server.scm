@@ -109,8 +109,6 @@
     (lambda (player-id replicate count)
       (let ((samples (map
                       (lambda (population)
-                        (msg "-----------------------------")
-                        (msg population)
                         (pop-sample
                          db population
                          (string->number replicate)
@@ -130,7 +128,6 @@
    (register
     (req 'get-all '(population replicate generation))
     (lambda (population replicate generation)
-      (msg "get-all:" population replicate generation)
       (pluto-response
        (scheme->json
         (pop-all db population
