@@ -19,7 +19,7 @@
 
 (define pattern-complexity 6)
 (define replicate-start 0)
-(define num-replicates 1)
+(define num-replicates 3)
 (define num-variations 8)
 
 (define pattern-images
