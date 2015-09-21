@@ -28,6 +28,11 @@
 (define selection-pop-size 256)
 (define photo-time-allowed 5)
 
+(define (choose-replicate)
+  (if (eq? touchscreen 0)
+      (random 2)
+      (+ 2 (random 2))))
+
 (define (pick-idle) (string-append "idle-" (+ 1 (random 13)) ".wav"))
 (define current-idle (pick-idle))
 (define (play-idle)
@@ -695,7 +700,7 @@
      (dazzle-button
       "Start game!" 600 400 (find-image "button-2.png")
       (lambda (c)
-        (let ((replicate (random num-replicates)))
+        (let ((replicate (choose-replicate)))
            (server-call-mutate
             "sample"
             (list
