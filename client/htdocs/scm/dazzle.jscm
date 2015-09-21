@@ -520,6 +520,7 @@
       (dazzle-button
        "More info..." 1150 650 (find-image "more.png")
        (lambda (c)
+	 (set! window.location "https://catchthedazzlebug.wordpress.com/")
          c)))
 
      c))))
