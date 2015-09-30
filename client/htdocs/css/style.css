@@ -5,10 +5,14 @@
 
 html, body {
     font-family: 'Press Start 2P';
-    color: #000000;
+    color: #fff;
     font-size:  20;
     background: #000;
     // cursor: url(images/mouse.png), default;
+}
+
+a {
+    color: #999;
 }
 
 #canvas {
