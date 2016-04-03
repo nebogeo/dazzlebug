@@ -664,7 +664,7 @@
     (game-modify-buttons
      (list
       (image-button
-       "Back" 1100 720 "jumpy" (find-image "button.png")
+       "Back" 1150 650 "jumpy" (find-image "button.png")
        (lambda (c) (nightjar-env c))))
      c))))
 

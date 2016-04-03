@@ -341,8 +341,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define pop-type "slow")
-(define rep 0)
+(define pop-type (get-url-parameter "speed"))
+(define rep (get-url-parameter "rep"))
 
 (define red "#fe0000")
 (define yellow "#f3fe00")
@@ -463,11 +463,12 @@
        (lambda (i pattern)
          (set! patterns (cons (list (list-ref pattern 0) (list-ref pattern 2)
                                 (* i 52) (+ 40 (* generationx 180))) patterns))
-         (let ((d (pattern-drawable (JSON.parse (list-ref pattern 1)) #f)))
+         (let ((d (pattern-drawable (JSON.parse (list-ref pattern 1)) #f))
+	       (fit (+ "" (/ (list-ref pattern 3) 1000))))
            (tctx.drawImage d (* i 90) 40 128 128)
            (tctx.fillText (+ "id: " (list-ref pattern 0) " ") (+ 30 (* i 90)) 20)
            (tctx.fillText (+ "parent: " (list-ref pattern 2) " ") (+ 30 (* i 90)) 30)
-           (tctx.fillText (+ "fitness: " (/ (list-ref pattern 3) 1000) " ") (+ 30 (* i 90)) 40)
+           (tctx.fillText (+ "fitness: " (fit.substring 0 5) " ") (+ 30 (* i 90)) 40)
            (tctx.fillText (+ "tests: " (list-ref pattern 4) " ") (+ 30 (* i 90)) 50)
            ))
        data)
