@@ -1220,7 +1220,7 @@
       ancestors)
 
      (let ((table (map (lambda (anc) (time-to-seconds (list-ref (car anc) 3))) ancestors)))
-       (draw-graph ctx "#ff7"
+       (draw-graph ctx "#000"
                    table
                    150 400 (* 100 (- (length ancestors) 1))
                    100 100 (min-max table)))

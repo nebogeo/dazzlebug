@@ -142,8 +142,8 @@
      ((eq? (program-type p) "terminal") p)
      (else
       (if (< (rndf) 0.5)
-          (_ (operator-operand-a p))
-          (_ (operator-operand-b p))))))
+          (_ (operator-operand-a p) (- d 1))
+          (_ (operator-operand-b p) (- d 1))))))
   (_ program (random pattern-complexity)))
 
 
