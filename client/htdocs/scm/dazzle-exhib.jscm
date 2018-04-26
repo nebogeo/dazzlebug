@@ -308,86 +308,52 @@
      (let ((fullpath (bg-full-path i)))
        (load-image-mutate
         (lambda (c)
-          (msg (+ "loaded " fullpath))
+          ;;(msg (+ "loaded " fullpath))
           c)
         fullpath)))
    (shuffle l)))
 
+;; complex screensaver
+(define title-offset (* (rndf) 50))
+(define button-offset (* (rndf) 50))
+(offset-background (* (rndf) 10) 
+		   (* (rndf) 10))
+
 (define (nightjar-intro c)
   ;; kick off the loading here
   (async-load-images-null c bg_images)
-
-  (game-modify-render
-   (lambda (ctx)
-       (set! ctx.fillStyle "#000")
-       (ctx.drawImage (find-image "intro.png") 20 0)
-       (set! ctx.font "normal 40pt 'Press Start 2P'")
-       (set! ctx.font "normal 15pt 'Press Start 2P'")
-       )
-   (game-modify-buttons
-    (list
-
-     (dazzle-button
-      "Play" 600 620 (find-image "button-1.png")
-      (lambda (c)
-        (async-load-images c bg_images)
-        (nightjar-research
-         "flicker"
-         (game-modify-data
-          (lambda (d)
-            (dazzle-data-init "CF"))
-          c)))))
-    c)))
-
-
-;    (image-button
-;     "More..." 870 700 "jumpy" (find-image "button.png")
-;     (lambda (c)
-;       (nightjar-env c)))
-
-
-
-(define (nightjar-browser-test c patterns)
-  (game-modify-render
-   (lambda (ctx)
-     (set! ctx.font "normal 30pt 'Press Start 2P'")
-     (ctx.fillText "Browser check" 20 50)
-     (ctx.drawImage (find-image "browser-check.png") 400 200)
-     (set! ctx.fillStyle "#000")
-     (ctx.fillRect 400 380 530 160)
-     (index-for-each
-      (lambda (i pattern)
-        (ctx.drawImage pattern (+ 400 (* i 100)) 400))
-      patterns)
-
-     (robo-nightjar-says-bottom
-      ctx 18
-      (string-append "The top and bottom patterns should look the same. If not, please use a different browser e.g. Chrome.")))
-   (game-modify-buttons
-    (list
-     (image-button
-      "Back" 1100 720 "jumpy" (find-image "button.png")
-      (lambda (c)
-        (nightjar-intro c)))
-
-     )
-    c)))
-
-(define (nightjar-about c)
-  (game-modify-render
-   (lambda (ctx)
-     (set! ctx.font "normal 30pt 'Press Start 2P'")
-     (wrap-text ctx "About" 0 50 1000 1000)
-     (set! ctx.font "normal 15pt 'Press Start 2P'")
-     (wrap-text ctx "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum." 0 100 1000 40))
-
-   (game-modify-buttons
-    (list
-    (image-button
-     "Back" 1100 720 "jumpy" (find-image "button.png")
-     (lambda (c) (nightjar-choose-location c))))
-    c)))
-
+  (game-modify-timeout
+   (lambda ()
+     (set! window.location "/"))
+   (game-modify-render
+    (lambda (ctx)
+      (set! ctx.fillStyle "#000")
+      (ctx.drawImage (find-image "title.png") 20 (+ title-offset 0))
+      (set! ctx.font "normal 40pt 'Press Start 2P'")
+      (set! ctx.font "normal 15pt 'Press Start 2P'")
+      )
+    (game-modify-buttons
+     (list
+      
+      (dazzle-button
+       "Play" (- 600 200) (+ button-offset 650) (find-image "button-1.png")
+       (lambda (c)
+	 (async-load-images c bg_images)
+	 (nightjar-research
+	  "flicker"
+	  (game-modify-data
+	   (lambda (d)
+	     (dazzle-data-init "CF"))
+	   c))))
+      
+      (dazzle-button
+       "About" (+ 600 200) (+ button-offset 650) (find-image "button-1.png")
+       (lambda (c)
+	 (nightjar-env c)))
+      
+      )
+     
+     c))))
 
 (define (nightjar-env c)
   (game-modify-update
@@ -396,9 +362,10 @@
     (lambda (ctx)
       (set! ctx.font "normal 35pt 'Press Start 2P'")
       (wrap-text
-       ctx (string-append "Why do we need to know about camouflage?") 0 60 2000 60)
-
-      (ctx.drawImage (find-image "info1.png") 20 80)
+       ctx (string-append "Why do we need to know about camouflage?") 0 55 2000 60)
+      
+      (ctx.drawImage (find-image "info1-s.png") 80 80)
+      (ctx.drawImage (find-image "logos.png") 20 700)
 
       (set! ctx.font "normal 15pt 'Press Start 2P'")
       (set! ctx.fillStyle "#000")
@@ -408,7 +375,7 @@
      (list
 
       (dazzle-button
-       "High Scores" 140 720 (find-image "button-1.png")
+       "High Scores" 180 640 (find-image "button-1.png")
        (lambda (c)
          (server-call-mutate
           "hiscores"
@@ -419,7 +386,7 @@
          c))
 
       (dazzle-button
-       "Best patterns" 430 720 (find-image "button-2.png")
+       "Best patterns" 470 640 (find-image "button-2.png")
        (lambda (c)
          (let ((replicate (random num-replicates)))
            (server-call-mutate
@@ -455,7 +422,7 @@
          (nightjar-generating-best-patterns c)))
 
       (dazzle-button
-       "Difficulty graph" 720 720 (find-image "button-1.png")
+       "Difficulty graph" 760 640 (find-image "button-1.png")
         (lambda (c)
           (server-call-mutate
            "get-stats"
@@ -466,7 +433,7 @@
 
 
       (image-button
-       "Play again!" 1010 720 "jumpy" (find-image "button-3.png")
+       "Play!" 1050 640 "jumpy" (find-image "button-3.png")
        (lambda (c)
          (async-load-images c bg_images)
          (nightjar-research
@@ -490,25 +457,54 @@
       (robo-nightjar-says ctx 20 "Please wait while we calculate the best patterns from one of the populations for you..."))
     (game-modify-buttons (list) c))))
 
+(define (draw-star fn x y t)
+  (ctx.save)
+  (let ((img (find-image fn)))
+    (ctx.translate x y)
+    (ctx.translate (/ img.width 2) (/ img.height 2))
+    (ctx.rotate t)
+    (ctx.translate (- 0 (/ img.width 2)) 
+		   (- 0 (/ img.height 2)))
+    (ctx.drawImage img 0 0))
+  (ctx.restore))
+
+(define (draw-star-b fn x y t)
+  (ctx.save)
+  (let ((img (find-image fn)))
+    (ctx.translate x y)
+    (ctx.translate (/ img.width 2) (/ img.height 2))
+    (let ((sc (+ 1.2 (* 0.2 (Math.sin t)))))
+      (ctx.scale sc sc))
+    (ctx.translate (- 0 (/ img.width 2)) 
+		   (- 0 (/ img.height 2)))
+    (ctx.drawImage img 0 0))
+  (ctx.restore))
+
+
 
 (define (nightjar-hiscores table c)
   (game-modify-update
-   (lambda (t c ) c)
+   (lambda (t c) c)
    (game-modify-render
     (lambda (ctx)
-      (robo-nightjar-bot-left ctx 17 "These are the quickest clicking players. The number in brackets is the generation of pattern.")
+      (draw-star "star-1.png" 210 250 (/ (game-time c) 800))
+      (draw-star "star-2.png" 800 400 (/ (game-time c) -400))
+      (draw-star "star-3.png" 260 70 (/ (game-time c) 500))
+      (draw-star-b "star-1.png" 850 100 (/ (game-time c) 50))
+      (draw-star-b "star-2.png" 250 500 (/ (game-time c) 80))
+
       (set! ctx.fillStyle "#000")
       (set! ctx.font "normal 30pt 'Press Start 2P'")
-      (wrap-text ctx (string-append "High Scores") 120 100 1000 70)
+      (wrap-text ctx (string-append "Hall of Fame") 0 100 1000 70)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
-
+      
       (index-for-each
        (lambda (i e)
-         (let ((txt (string-append (car e) " : " (time-to-seconds (cadr e)) " (" (list-ref e 2) ")")))
+         (let ((txt (string-append (car e) " : " (time-to-seconds (cadr e)))))
            (set! ctx.fillStyle "#000")
            (if (eq? i 0)
-               (text-flashy-render ctx txt 650 (+ 200 (* 30 i)) (game-time c))
-               (ctx.fillText txt 650 (+ 200 (* 30 i))))))
+               (text-flashy-render ctx txt 540 (+ 160 (* 30 i)) (game-time c))
+               (ctx.fillText txt 540 (+ 160 (* 30 i))))))
        (list-ref table 0)))
 
 
@@ -609,12 +605,14 @@
       (set! ctx.font "normal 30pt 'Press Start 2P'")
       (wrap-text ctx (string-append "Pattern difficulty graph") 0 100 1000 70)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
-      (draw-fitness-graph ctx table 50 250 1000 500))
+      (wrap-text ctx "This graph shows if the dazzlebugs are getting harder to spot as people play the game. The ones with the patterns that take longest are more likely to reach the next generation." 0 150 1000 40)
+      (set! ctx.font "normal 20pt 'Press Start 2P'")
+      (draw-fitness-graph ctx table 130 220 1000 400))
 
     (game-modify-buttons
      (list
       (image-button
-       "Back" 1150 650 "jumpy" (find-image "button.png")
+       "Back" 600 730 "jumpy" (find-image "button.png")
        (lambda (c) (nightjar-env c))))
      c))))
 
@@ -638,19 +636,40 @@
    (game-modify-render
     (lambda (ctx)
       (set! ctx.font "normal 30pt 'Press Start 2P'")
-      (wrap-text ctx "Are you happy for us to use your timing information?" 0 100 1000 60)
-      (set! ctx.font "normal 15pt 'Press Start 2P'")
-      (wrap-text ctx "Try and click on the boxes as fast as you can. Small differences help to make better camouflage patterns." 0 200 600 30)
-
+      (wrap-text ctx "This is a citizen science game. We would like to use the results from your game for a scientific publication. We are only using timing information with no personal identifiers. Is that ok?" 0 250 1000 60)
       )
 
     (game-modify-buttons
-     (list
+     (list      
+      (image-button
+       "No" (- 600 200) 600 "jumpy" (find-image "button.png")
+       (lambda (c) (nightjar-intro c)))
 
-     (dazzle-button
-      "Start game!" 600 400 (find-image "button-2.png")
-      (lambda (c)
-        (let ((replicate (choose-replicate)))
+      (dazzle-button
+       "Yes" (+ 600 200) 600 (find-image "button-2.png")
+       (lambda (c) (nightjar-explain c)))
+
+      )
+     
+     c))))
+
+(define (nightjar-explain c)
+  (game-modify-update
+   (lambda (t c) c)
+   (game-modify-render
+    (lambda (ctx)
+      (ctx.drawImage (find-image "explain.png") 180 120)
+      (set! ctx.font "normal 30pt 'Press Start 2P'")
+      (wrap-text ctx "Try to catch the dazzlebugs as quickly as you can. These bugs evolve over time to be harder to catch!"  0 100 1200 60)
+      )
+    
+    (game-modify-buttons
+     (list
+      
+      (dazzle-button
+       "Start game!" 600 700 (find-image "button-2.png")
+       (lambda (c)
+	 (let ((replicate (choose-replicate)))
            (server-call-mutate
             "sample"
             (list
@@ -672,16 +691,11 @@
                           (dazzle-data-start-game
                            d player-id time-now pop (list 0 0) replicate)))
                       c))))))))
-        (nightjar-generating-patterns c)))
-
-
-
-     (image-button
-      "Back" 600 600 "jumpy" (find-image "button.png")
-      (lambda (c) (nightjar-intro c)))
-     )
-
+	 (nightjar-generating-patterns c)))
+      )
+     
      c))))
+
 
 (define (nightjar-generating-patterns c)
   (game-modify-update
@@ -1280,19 +1294,21 @@
 (load-images!
  (append
   (list
-   "intro.png"
-   "info1.png"
+   "title.png"
+   "logos.png"
+   "explain.png"
+   "info1-s.png"
    "more.png"
    "button.png"
    "button-1.png"
    "button-2.png"
    "button-3.png"
    "button-small.png"
-   "mute-on.png"
-   "mute-off.png"
    "pattern.png"
    "foam.png"
-   "browser-check.png"
+   "star-1.png"
+   "star-2.png"
+   "star-3.png"
    )
   pattern-images)
  (lambda ()

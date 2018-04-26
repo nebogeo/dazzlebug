@@ -636,3 +636,9 @@ function get_url_parameter(sParam) {
         }
     }
 };
+
+function offset_background(x,y) {
+    $('canvas').css({
+        'background-position': x+'% '+y+'%'
+    });
+}
