@@ -554,7 +554,7 @@
   (when (not (null? table))
         (ctx.beginPath)
         (ctx.moveTo x (+ y h))
-        (set! ctx.lineWidth 3)
+        (set! ctx.lineWidth 6)
         (index-for-each
          (lambda (i s)
            (ctx.lineTo (+ x (* i x-per-sample))
@@ -570,30 +570,30 @@
                      (map (lambda (i) (cadr i)) (list-ref table 2)))))
     (let ((x-per-sample (/ w (- (longest table) 1)))
           (mm (meta-min-max table)))
-      (draw-graph ctx "#f77" (list-ref table 0) x y w h x-per-sample mm)
-      (draw-graph ctx "#7f7" (list-ref table 1) x y w h x-per-sample mm)
-      (draw-graph ctx "#77f" (list-ref table 2) x y w h x-per-sample mm)
+      (draw-graph ctx "#000" (list-ref table 0) x y w h x-per-sample mm)
+      (draw-graph ctx "#777" (list-ref table 1) x y w h x-per-sample mm)
+      (draw-graph ctx "#aaa" (list-ref table 2) x y w h x-per-sample mm)
 
   (ctx.save)
-  (ctx.translate (+ x 10) (+ y -170 (/ h 2)))
+  (ctx.translate (- x 35) (+ y -170 (/ h 2)))
   (ctx.rotate (/ Math.PI 2))
   (ctx.fillText "Average time in seconds" 0 0)
   (ctx.restore)
 
-  (set! ctx.fillStyle "#f77")
-  (ctx.fillText "Slow bugs" (+ x 50) (+ y 40))
-  (set! ctx.fillStyle "#7f7")
+  (set! ctx.fillStyle "#000")
+  (ctx.fillText "Slow bugs" (+ x 50) (+ y 120))
+  (set! ctx.fillStyle "#777")
   (ctx.fillText "Medium bugs" (+ x 50) (+ y 80))
-  (set! ctx.fillStyle "#77f")
-  (ctx.fillText "Fast bugs" (+ x 50) (+ y 120))
+  (set! ctx.fillStyle "#aaa")
+  (ctx.fillText "Fast bugs" (+ x 50) (+ y 40))
 
   (set! ctx.fillStyle "#000")
-  (ctx.fillText "Generations" (+ x h -100) (+ 25 y (/ w 2)))
-  (ctx.fillText "0" x (+ 20 y h))
+  (ctx.fillText "Generations" (+ x (/ w 2) -100) (+ y h 25))
+  (ctx.fillText "0" x (+ 20 (+ y h)))
   (ctx.fillText (longest table) (+ x w) (+ y h 20))
 
-  (ctx.fillText (time-to-seconds (cadr mm)) x (- y 5))
-  (ctx.fillText (time-to-seconds (car mm)) x (+ y h -5))
+  (ctx.fillText (time-to-seconds (cadr mm)) (- x 35) (- y 5))
+  (ctx.fillText (time-to-seconds (car mm)) (- x 35) (+ y h -5))
 
   )))
 
@@ -605,14 +605,14 @@
       (set! ctx.font "normal 30pt 'Press Start 2P'")
       (wrap-text ctx (string-append "Pattern difficulty graph") 0 100 1000 70)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
-      (wrap-text ctx "This graph shows if the dazzlebugs are getting harder to spot as people play the game. The ones with the patterns that take longest are more likely to reach the next generation." 0 150 1000 40)
+      (wrap-text ctx "This graph shows if the dazzlebugs are getting harder to spot as people play the game. The ones with the patterns that take longest to survive in each game are more likely to reach the next generation." 0 150 1000 40)
       (set! ctx.font "normal 20pt 'Press Start 2P'")
-      (draw-fitness-graph ctx table 130 220 1000 400))
+      (draw-fitness-graph ctx table 130 270 1000 400))
 
     (game-modify-buttons
      (list
       (image-button
-       "Back" 600 730 "jumpy" (find-image "button.png")
+       "Back" 600 750 "jumpy" (find-image "button.png")
        (lambda (c) (nightjar-env c))))
      c))))
 
@@ -1116,7 +1116,7 @@
       (robo-nightjar-says-bottom
        ctx 18
        (string-append "These are the best patterns so far from replicate "
-                      (+ replicate 1) ". Click on a pattern to see it's ancestors."))
+                      (+ replicate 1) ". Click on a pattern to see its ancestors."))
       (set! ctx.font "normal 10pt 'Press Start 2P'"))
 
     (game-modify-buttons
