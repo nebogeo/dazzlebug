@@ -324,7 +324,7 @@
   (async-load-images-null c bg_images)
   (game-modify-timeout
    (lambda ()
-     (set! window.location "/"))
+     (set! window.location "/exhib.html"))
    (game-modify-render
     (lambda (ctx)
       (set! ctx.fillStyle "#000")

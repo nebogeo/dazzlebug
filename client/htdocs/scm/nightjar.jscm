@@ -728,8 +728,6 @@
   (requestAnimFrame top-render ctx))
 
 
-
-
 (define (mutate-game f)
   (lambda (data)
     (set! game (f game data))))
