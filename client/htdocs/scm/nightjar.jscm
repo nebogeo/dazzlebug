@@ -657,6 +657,7 @@
 (define game 0)
 
 (define (mouse-from-event g canvas e)
+  (set! timeout-time 0)
   (let ((rect (canvas.getBoundingClientRect)))
     (let ((sx (/ rect.width screen-width))
           (sy (/ rect.height screen-height)))
@@ -666,6 +667,7 @@
                (cadr (game-world-offset g)))))))
 
 (define (touch-from-event g canvas e)
+  (set! timeout-time 0)
   (let ((e (car e.targetTouches)))
     (mouse-from-event g canvas e)))
 
