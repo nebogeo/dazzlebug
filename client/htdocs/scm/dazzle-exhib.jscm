@@ -355,6 +355,41 @@
      
      c))))
 
+(define (go-to-best-patterns c)
+  (let ((replicate (random num-replicates)))
+    (server-call-mutate
+     "top-patterns"
+     (list
+      (list "replicate" replicate)
+      (list "count" num-best-patterns))
+     (lambda (c data)
+       (let ((data (JSON.parse data)))
+	 (nightjar-best
+	  (game-modify-data
+	   (lambda (d)
+	     (dazzle-data-start-game
+	      d (dazzle-data-player-id d) 0
+	      (make-best-population
+	       c (map
+		  (lambda (d)
+		    ;; individually parse the pattern's code
+		    (cons (JSON.parse (car d)) (cdr d)))
+		  (list-ref data 0))
+	       (map
+		(lambda (d)
+		  ;; individually parse the pattern's code
+		  (cons (JSON.parse (car d)) (cdr d)))
+		(list-ref data 1))
+	       (map
+		(lambda (d)
+		  ;; individually parse the pattern's code
+		  (cons (JSON.parse (car d)) (cdr d)))
+		(list-ref data 2)))
+	      (list 0 0) 0))
+	   c) replicate)))))
+  (nightjar-generating-best-patterns c))
+
+
 (define (nightjar-env c)
   (game-modify-update
    (lambda (t c) c)
@@ -388,52 +423,10 @@
       (dazzle-button
        "Best patterns" 470 640 (find-image "button-2.png")
        (lambda (c)
-         (let ((replicate (random num-replicates)))
-           (server-call-mutate
-            "top-patterns"
-            (list
-             (list "replicate" replicate)
-             (list "count" num-best-patterns))
-            (lambda (c data)
-              (let ((data (JSON.parse data)))
-                (nightjar-best
-                 (game-modify-data
-                  (lambda (d)
-                    (dazzle-data-start-game
-                     d (dazzle-data-player-id d) 0
-                     (make-best-population
-                      c (map
-                         (lambda (d)
-                           ;; individually parse the pattern's code
-                           (cons (JSON.parse (car d)) (cdr d)))
-                         (list-ref data 0))
-                      (map
-                       (lambda (d)
-                         ;; individually parse the pattern's code
-                         (cons (JSON.parse (car d)) (cdr d)))
-                       (list-ref data 1))
-                      (map
-                       (lambda (d)
-                         ;; individually parse the pattern's code
-                         (cons (JSON.parse (car d)) (cdr d)))
-                       (list-ref data 2)))
-                     (list 0 0) 0))
-                  c) replicate)))))
-         (nightjar-generating-best-patterns c)))
-
-      (dazzle-button
-       "Difficulty graph" 760 640 (find-image "button-1.png")
-        (lambda (c)
-          (server-call-mutate
-           "get-stats"
-           (list)
-           (lambda (c data)
-             (nightjar-fit-graph (JSON.parse data) c)))
-          c))
-
+	 (go-to-best-patterns c)))
 
       (image-button
-       "Play!" 1050 640 "jumpy" (find-image "button-3.png")
+       "Play!" 760 640 "jumpy" (find-image "button-3.png")
        (lambda (c)
          (async-load-images c bg_images)
          (nightjar-research
@@ -442,6 +435,11 @@
            (lambda (d)
              (dazzle-data-init-land d "CF"))
            c))))
+
+      (dazzle-button
+       "Exit" 1050 640 (find-image "button-1.png")
+       (lambda (c) (nightjar-intro c))
+       c)
 
       )
 
@@ -613,7 +611,8 @@
      (list
       (image-button
        "Back" 600 750 "jumpy" (find-image "button.png")
-       (lambda (c) (nightjar-env c))))
+       (lambda (c)
+	 (go-to-best-patterns c))))
      c))))
 
 (define (samples-to-pop samples pop)
@@ -1115,13 +1114,21 @@
       (set! ctx.font "normal 15pt 'Press Start 2P'")
       (robo-nightjar-says-bottom
        ctx 18
-       (string-append "These are the best patterns so far from replicate "
-                      (+ replicate 1) ". Click on a pattern to see its ancestors."))
+       (string-append "These are some of our best patterns so far. Click on a pattern to see its ancestors."))
       (set! ctx.font "normal 10pt 'Press Start 2P'"))
 
     (game-modify-buttons
      (append
       (list
+       (dazzle-button
+	"Difficulty graph" 150 720 (find-image "button-1.png")
+	(lambda (c)
+	  (server-call-mutate
+	   "get-stats"
+	   (list)
+	   (lambda (c data)
+	     (nightjar-fit-graph (JSON.parse data) c)))
+	  c))
 
        (image-button
         "Back" 1100 720 "jumpy" (find-image "button.png")
