@@ -243,7 +243,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (dazzle-data time patterns offset land images username replicate player-time)
-  (list time patterns offset land images username replicate player-time tooltip player-id))
+  (list time patterns offset land images username replicate player-time "" 0))
 
 (define (dazzle-data-init land)
   (list 0 () (list 0 0) land () "???" 0 0 "" 0))
@@ -428,12 +428,13 @@
       (image-button
        "Play!" 760 640 "jumpy" (find-image "button-3.png")
        (lambda (c)
-         (async-load-images c bg_images)
+	 (async-load-images c bg_images)
          (nightjar-research
-          "flicker" c
+          "flicker"
           (game-modify-data
            (lambda (d)
-             (dazzle-data-init-land d "CF"))
+             ;; restart as new player...
+	     (dazzle-data-init "CF"))
            c))))
 
       (dazzle-button

@@ -33,7 +33,9 @@
     (let ((v ($.get "egglab" args)))
       (v.fail (lambda (jqXHR textStatus errorThrown)
                 (msg textStatus)
-                (msg errorThrown))))))
+                (msg errorThrown)
+		(window.location.reload)
+		)))))
 
 (define (server-call-mutate name argsl f)
   (let ((args (build-url-args argsl)))
@@ -41,7 +43,9 @@
     (let ((v ($.get "egglab" args (mutate-game f))))
       (v.fail (lambda (jqXHR textStatus errorThrown)
                 (msg textStatus)
-                (msg errorThrown))))))
+                (msg errorThrown)
+		(window.location.reload)
+		)))))
 
 ;; --------------------------------------------
 ;; basics
