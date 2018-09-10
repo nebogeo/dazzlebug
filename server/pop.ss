@@ -304,7 +304,25 @@
             ))
          (cdr s)))))
 
-
+(define (pop-every db id)
+  (let ((s (select
+            db (string-append
+                ;;"select e.id, e.genotype, e.parent, e.fitness/e.tests, e.tests from egg as e where e.id=?;"
+		"select e.id, e.genotype, e.parent, e.fitness/e.tests, e.tests from egg as e where id not in (select pattern_id from render) order by random() limit 1;")
+            ;;id
+	    )))
+    (if (null? s)
+        '()
+        (map
+         (lambda (i)
+           (list
+            (vector-ref i 0)
+            (vector-ref i 1)
+            (vector-ref i 2)
+            (vector-ref i 3)
+            (vector-ref i 4)
+            ))
+         (cdr s)))))
 
 (define (get-individual db id)
   (let ((s (select db "select e.parent, e.genotype, e.generation, (e.fitness/e.tests) from egg as e where e.id = ? " id)))

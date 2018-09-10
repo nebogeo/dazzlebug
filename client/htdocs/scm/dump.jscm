@@ -78,7 +78,6 @@
             ((eq? pre-pop-types 0) "CP")
             ((eq? pre-pop-types 1) "MV")
             (else "CF"))))
-    (console.log (+ "damsmdmdnadnasd: " p))
     (server-call
      "add"
      (list
@@ -353,14 +352,11 @@
 
 (define (nightjar-intro c)
   (server-call-mutate
-   "get-all"
-   (list
-    (list "population" pop-type)
-   (list "replicate" rep)
-    (list "generation" 0))
+   "get-every"
+   (list (list "id" 0))
    (lambda (c data)
      (nightjar-viz (JSON.parse data) c)))
-
+  
 ;  (server-call-mutate
 ;   "get-decendents"
 ;   (list
@@ -449,27 +445,27 @@
 
 (define (make-pop-drawable data)
   (let ((tcanvas (document.createElement "canvas")))
-    (set! tcanvas.width screen-width)
-    (set! tcanvas.height 300)
-    (set! ctx.font "normal 20pt 'Press Start 2P'")
-    (set! ctx.fillStyle "#000")
-    (set! ctx.strokeStyle "#000")
-
+    (set! tcanvas.width 128)
+    (set! tcanvas.height 128)
     (let ((tctx (tcanvas.getContext "2d")))
-      (tctx.fillText (+ "generation: " generationx) 0 8)
-      (set! ctx.font "normal 13pt 'Press Start 2P'")
-
+      
       (index-for-each
        (lambda (i pattern)
-         (set! patterns (cons (list (list-ref pattern 0) (list-ref pattern 2)
-                                (* i 52) (+ 40 (* generationx 180))) patterns))
+         ;;(set! patterns (cons (list (list-ref pattern 0) (list-ref pattern 2)
+         ;;                     (* i 52) (+ 40 (* generationx 180))) patterns))
          (let ((d (pattern-drawable (JSON.parse (list-ref pattern 1)) #f))
 	       (fit (+ "" (/ (list-ref pattern 3) 1000))))
-           (tctx.drawImage d (* i 90) 40 128 128)
-           (tctx.fillText (+ "id: " (list-ref pattern 0) " ") (+ 30 (* i 90)) 20)
-           (tctx.fillText (+ "parent: " (list-ref pattern 2) " ") (+ 30 (* i 90)) 30)
-           (tctx.fillText (+ "fitness: " (fit.substring 0 5) " ") (+ 30 (* i 90)) 40)
-           (tctx.fillText (+ "tests: " (list-ref pattern 4) " ") (+ 30 (* i 90)) 50)
+           (tctx.drawImage d 0 0 128 128)
+
+	   (msg (list-ref pattern 0))
+	   (server-call
+	    "save-render" 
+	    (list
+	     (list "pattern-id" (list-ref pattern 0))
+	     (list "data" (tcanvas.toDataURL "image/png"))))
+
+	   ;; save to db
+
            ))
        data)
       tcanvas)))
@@ -514,36 +510,23 @@
      (ctx.stroke))
    connections))
 
-(define i 0)
+(define i 14940)
 
 (define (nightjar-viz data c)
   (game-modify-update
    (lambda (t c)
      (when (zero? wait)
-           (ctx.drawImage (make-pop-drawable data) 0 (* i 155))
+           (ctx.drawImage (make-pop-drawable data) 0 0)
            (set! i (+ i 1))
-           ;;(set! pop-drawables (append pop-drawables (list )))
-           (set! wait 1)
-           (set! generationx (+ generationx 1))
-           (server-call-mutate
-            "get-all"
-            (list
-             (list "population" pop-type)
-             (list "replicate" rep)
-             (list "generation" generationx))
-            (lambda (c data)
-              (let ((d (JSON.parse data)))
-                (if (and
-                         (not (null? d)))
-                    (begin
-                      (msg "new gen")
-                      (set! pos 0)
-                      (set! wait 0)
-                      (nightjar-viz d c))
-                    (begin
-                      (msg "done...")
+	   (set! wait 1)
 
-                      c))))))
+	   (server-call-mutate
+	    "get-every"
+	    (list (list "id" i))
+	    (lambda (c data)
+	      (set! wait 0)
+	      (nightjar-viz (JSON.parse data) c)))   
+	   )
      c)
    (game-modify-render
     (lambda (ctx)
@@ -852,6 +835,6 @@
 ;(set! screen-width 15300)
 ;(set! screen-height 6900)
 
-(set! screen-width 2340)
-(set! screen-height (* 3672 2))
+(set! screen-width 300)
+(set! screen-height 300)
 (set! clear-screen 0)

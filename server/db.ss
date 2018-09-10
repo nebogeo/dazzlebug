@@ -33,7 +33,8 @@
   )
 
 (define (update db)
-  (exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer )"))
+  ;;(exec/ignore db "create table performance ( id integer primary key autoincrement, time_stamp varchar, player_id int, egg_id integer, mouse_x integer, mouse_y integer, target_x integer, target_y integer, target_dir_x real, target_dir_y real, success integer )"))
+  (exec/ignore db "create table render ( id integer primary key autoincrement, pattern_id int, data varchar )"))
 
 ;; initialise the state
 (define (check/init-state db population replicate)
@@ -200,13 +201,17 @@
       (begin
         (display "open existing db")(newline)
         (let ((db (open (string->path db-name))))
-          ;(update db)
+          ;;(update db)
           db))
       (begin
         (display "making new db")(newline)
         (let ((db (open (string->path db-name))))
           (setup db)
           db))))
+
+(define (insert-render db pattern-id data)
+  (insert db "insert into render values (NULL, ?, ?)"
+          pattern-id data))
 
 (define (unit-tests)
   ;; db

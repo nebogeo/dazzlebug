@@ -138,6 +138,13 @@
                  (string->number generation))))))
 
    (register
+    (req 'get-every '(id))
+    (lambda (id)
+      (pluto-response
+       (scheme->json
+        (pop-every db (string->number id))))))
+
+   (register
     (req 'get-decendents '(egg-id))
     (lambda (egg-id)
       (pluto-response
@@ -248,6 +255,15 @@
          (pluto-response
           (scheme->json
            (get-score-rank db score)))))))
+
+   (register 
+    (req 'save-render '(pattern-id data))
+    (lambda (pattern-id data)
+      (syncro
+       (lambda ()
+	 (insert-render db (string->number pattern-id) data)
+         (pluto-response
+          (scheme->json '()))))))
 
    (register
     (req 'hiscores '(count))
