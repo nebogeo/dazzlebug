@@ -94,7 +94,7 @@
      ;; not in database or played before - pass through
      ((or (null? played/average)
           (eq? (car (car played/average)) 0))
-      (msg "fitness control pass-through")
+      ;;(msg "fitness control pass-through")
       fitness)
      (else
       (let* ((info (car played/average))
@@ -135,6 +135,8 @@
             (set-state db population replicate "phase" "fill")))
 
      ((equal? phase "fill")
+      (msg "filling:" population " " replicate " gen: "
+	   (get-state db population replicate "generation"))
       (insert-egg
        db population replicate timestamp player-id
        fitness 1 (+ (get-state db population replicate "generation") 1)
@@ -443,7 +445,7 @@
   (let ((player-average (calc-player-average db)))
     (when (not (null? player-average))
           (let ((player-average (car player-average)))
-            (msg "global player average now: " player-average)
+            ;;(msg "global player average now: " player-average)
             (exec/ignore db "insert or replace into global_info (id, player_average) values (1, ?)"
                          player-average)))))
 

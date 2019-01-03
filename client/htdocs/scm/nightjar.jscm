@@ -34,7 +34,8 @@
       (v.fail (lambda (jqXHR textStatus errorThrown)
                 (msg textStatus)
                 (msg errorThrown)
-		;(window.location.reload)
+		(msg "wooop")
+		(window.location.reload)
 		)))))
 
 (define (server-call-mutate name argsl f)
@@ -44,7 +45,8 @@
       (v.fail (lambda (jqXHR textStatus errorThrown)
                 (msg textStatus)
                 (msg errorThrown)
-		;(window.location.reload)
+		(msg "wooop2")
+		(window.location.reload)
 		)))))
 
 ;; --------------------------------------------

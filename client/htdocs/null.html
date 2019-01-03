@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dazzlebug</title>
+    <link rel="stylesheet" media="screen" rel="stylesheet" type="text/css"/>
+    <link href="css/style.css" rel="stylesheet" type="text/css">
+    <body onload="init(['scm/dazzle-null.jscm']);" bgcolor="#777">
+
+      <div id="fb-root"></div>
+
+      <div>
+        <center>
+          <canvas id="canvas" width="1237" height="820"></canvas>
+        </center>
+
+        <div style="display:none;">
+          <h2>output</h2>
+          <pre><div id="output"></div></pre>
+
+          <h2>compiler</h2>
+          <pre><div id="compiled"></div></pre>
+        </div>
+      </div>
+      <center>
+      A <a href="https://github.com/nebogeo/dazzlebug">free software</a> game made in Cornwall by <a href="http://fo.am/kernow">Foam Kernow</a>
+      </center>
+      <script type="text/javascript" src="js/jquery-1.9.1.min.js"></script>
+      <script type="text/javascript" src="https://connect.facebook.net/en_US/all.js"></script>
+      <script type="text/javascript" src="js/fb.js"></script>
+      <script type="text/javascript" src="js/appid.js"></script>
+      <script type="text/javascript" src="js/ditto.js"></script>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-67299123-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+    </body>
+
+</html>

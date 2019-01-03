@@ -74,7 +74,7 @@
     (string-append "unknown command "
                    (symbol->string (req-name req))))
    ((eq? (req-name (register-req (car reg))) (req-name req))
-    (display (req-name req))(newline)
+    ;;(display (req-name req))(newline)
     (request-run (car reg) req))
    (else
     (request-dispatch (cdr reg) req))))

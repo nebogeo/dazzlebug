@@ -1,2 +1,2 @@
 #!/bin/bash
-./server.scm 8889
+./server.scm 8888
